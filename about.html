@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About Us | Jollar Picks</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #F0D080;
+    --gold-dark: #8B6914;
+    --black: #080808;
+    --black-2: #0F0F0F;
+    --black-3: #161616;
+    --black-4: #1E1E1E;
+    --white: #F5F0E8;
+    --grey: #888880;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--black); color: var(--white); font-family: 'Barlow', sans-serif; overflow-x: hidden; cursor: default; }
+
+  /* NOISE OVERLAY */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 60px;
+    background: linear-gradient(to bottom, rgba(8,8,8,0.95) 0%, transparent 100%);
+    backdrop-filter: blur(4px);
+  }
+
+  .nav-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 3px;
+    background: linear-gradient(135deg, var(--gold-light), var(--gold), var(--gold-dark));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .nav-logo span {
+    color: var(--white);
+    -webkit-text-fill-color: var(--white);
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 40px;
+    list-style: none;
+  }
+
+  .nav-links a {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--grey);
+    text-decoration: none;
+    transition: color 0.25s;
+    position: relative;
+  }
+
+  .nav-links a::after {
+    content: '';
+    position: absolute;
+    bottom: -4px; left: 0;
+    width: 0; height: 1px;
+    background: var(--gold);
+    transition: width 0.3s ease;
+  }
+
+  .nav-links a:hover { color: var(--gold-light); }
+  .nav-links a:hover::after { width: 100%; }
+
+  .nav-cta {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--black);
+    background: linear-gradient(135deg, var(--gold-light), var(--gold));
+    border: none;
+    padding: 10px 26px;
+    cursor: pointer;
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+    transition: opacity 0.2s, transform 0.2s;
+  }
+  .nav-cta:hover { opacity: 0.85; transform: translateY(-1px); }
+
+  /* HERO SECTION */
+  .about-hero {
+    min-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 120px 60px 60px;
+    position: relative;
+    background: var(--black-2);
+    border-bottom: 1px solid rgba(201,168,76,0.1);
+  }
+
+  .hero-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(60px, 8vw, 110px);
+    line-height: 0.9;
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+  }
+
+  .gold {
+    background: linear-gradient(135deg, var(--gold-light), var(--gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* CONTENT SECTIONS */
+  section { padding: 100px 60px; }
+  .section-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-label::before { content: ''; width: 32px; height: 1px; background: var(--gold); }
+
+  .content-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: start;
+  }
+
+  .content-text {
+    font-size: 16px;
+    line-height: 1.8;
+    color: rgba(245,240,232,0.7);
+    font-weight: 300;
+  }
+
+  /* TEAM CARDS */
+  .team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 30px;
+    margin-top: 50px;
+  }
+
+  .team-card {
+    background: var(--black-3);
+    border: 1px solid rgba(201,168,76,0.1);
+    padding: 40px;
+    text-align: center;
+    transition: transform 0.3s ease;
+  }
+  .team-card:hover { transform: translateY(-5px); border-color: var(--gold); }
+
+  .team-role {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    background: var(--black);
+    border-top: 1px solid rgba(201,168,76,0.1);
+    padding: 60px;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 48px;
+  }
+
+  .footer-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    letter-spacing: 3px;
+    background: linear-gradient(135deg, var(--gold-light), var(--gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+  }
+
+  .footer-desc {
+    font-size: 13px;
+    font-weight: 300;
+    color: var(--grey);
+    line-height: 1.7;
+    max-width: 260px;
+  }
+
+  .footer-col-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 20px;
+  }
+
+  .footer-links { list-style: none; }
+
+  .footer-links li {
+    margin-bottom: 10px;
+  }
+
+  .footer-links a {
+    font-size: 13px;
+    color: var(--grey);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .footer-links a:hover { color: var(--gold-light); }
+
+  .footer-bottom {
+    padding: 24px 60px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer-bottom-text {
+    font-size: 12px;
+    color: rgba(136,136,128,0.6);
+    letter-spacing: 0.5px;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">Jollar<span style="color:rgba(245,240,232,0.3)"> /</span> Picks</div>
+  <ul class="nav-links">
+    <li><a href="./mainpage.html">Home</a></li>
+    <li><a href="./about.html">About</a></li>    
+    <li><a href="./picks.html">Picks</a></li>
+    <li><a href="./dash.html">Dashboard</a></li>
+  </ul>
+  <a href="./signup&login.html"><button class="nav-cta">Join Now</button></a>
+</nav>
+
+<header class="about-hero">
+    <h1 class="hero-title reveal">WHO <span class="gold">WE</span> ARE</h1>
+    <p class="reveal" style="color: var(--grey); max-width: 600px;">The story and the people behind the most trusted prediction market in Jollaria.</p>
+</header>
+
+<section>
+    <div class="content-grid">
+        <div class="reveal">
+            <div class="section-label">Our Mission</div>
+            <h2 style="font-family: 'Bebas Neue'; font-size: 48px; margin-bottom: 20px;">FOR <span class="gold">JOLLARIANS</span></h2>
+            <p class="content-text">
+                Here at Jollar Picks, we believe that sports predictions should be more than just guessing. We provide 
+                advanced metrics and a passion for the game to provide Jollarian citizens with the edge they need 
+                to win with confidence.
+            </p>
+        </div>
+        <div class="reveal" style="border-left: 1px solid rgba(201,168,76,0.1); padding-left: 40px;">
+            <div class="section-label">Our Background</div>
+            <h2 style="font-family: 'Bebas Neue'; font-size: 48px; margin-bottom: 20px;">BY <span class="gold">JOLLARIANS</span></h2>
+            <p class="content-text">
+                Founded in November 2025, the company started as one guy enthusiastically tracking the sports leagues. Today, we are a government-backed platform providing accurate updates across every major sport, for you.
+            </p>
+        </div>
+    </div>
+</section>
+
+<section style="background: var(--black-2);">
+    <div class="section-label">Our Team</div>
+    <h2 style="font-family: 'Bebas Neue'; font-size: 48px;">THE <span class="gold">EXPERTS</span></h2>
+    
+    <div class="team-grid">
+        <div class="team-card reveal">
+            <div class="team-role">Founder</div>
+            <h3 style="font-family: 'Bebas Neue'; font-size: 24px;">Dr. Sports, PhD</h3>
+            <p style="font-size: 14px; color: var(--grey); margin-top: 10px;">Overseeing the core algorithms and strategy roadmap.</p>
+        </div>
+        <div class="team-card reveal">
+            <div class="team-role">Analytics & Data</div>
+            <h3 style="font-family: 'Bebas Neue'; font-size: 24px;">Chief Stat</h3>
+            <p style="font-size: 14px; color: var(--grey); margin-top: 10px;">Ensuring 100% accuracy in our game results and pick outcomes.</p>
+        </div>
+        <div class="team-card reveal">
+            <div class="team-role">Citizen Relations</div>
+            <h3 style="font-family: 'Bebas Neue'; font-size: 24px;">Professor Envoy</h3>
+            <p style="font-size: 14px; color: var(--grey); margin-top: 10px;">Connecting Jollarians to the best league experiences.</p>
+        </div>
+    </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div>
+    <div class="footer-logo">Jollar Picks</div>
+    <p class="footer-desc">Premium sports predictions by Jollarians for Jollarians. Trusted by citizens across Jollaria.</p>
+  </div>
+  <div>
+    <div class="footer-col-title">Picks</div>
+    <ul class="footer-links">
+      <li><a href="#">This Week's Picks</a></li>
+      <li><a href="#">See All sports</a></li>
+    </ul>
+  </div>
+  <div>
+    <div class="footer-col-title">Company</div>
+    <ul class="footer-links">
+      <li><a href="#">Our Background</a></li>
+      <li><a href="#">How We Do It</a></li>
+      <li><a href="#">Updates</a></li>
+    </ul>
+  </div>
+  <div>
+    <div class="footer-col-title">Account</div>
+    <ul class="footer-links">
+      <li><a href="#">Sign Up</a></li>
+      <li><a href="#">Login</a></li>
+      <li><a href="#">FAQ & Support</a></li>
+    </ul>
+  </div>
+</footer>
+<div class="footer-bottom">
+  <span class="footer-bottom-text">© 2026 Jollar Picks. All rights reserved.</span>
+  <span class="footer-bottom-text">Jollars are not exchangeable for any macronational currency. Legal age and up only.</span>
+</div>
+
+<script>
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+  reveals.forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
