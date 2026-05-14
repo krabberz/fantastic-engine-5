@@ -2,5 +2,5 @@
 
 RULES
 - create things in ideate
-- push them to validate
+- move them to validate if you think is good idea
 - i will move them to source
