@@ -3,4 +3,4 @@
 RULES
 - create things in ideate
 - push them to validate
-- i will push them to source
+- i will pull them to source
