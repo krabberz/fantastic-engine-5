@@ -1,0 +1,90 @@
+.hero {
+  min-height: 50vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 120px 60px 60px;
+  background: var(--black-2);
+  border-bottom: 1px solid rgba(201,168,76,0.1);
+}
+
+.heroTitle {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(60px, 8vw, 110px);
+  line-height: 0.9;
+  letter-spacing: 2px;
+}
+
+.section { padding: 100px 60px; }
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+}
+
+.subTitle {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 48px;
+  margin-bottom: 20px;
+}
+
+.text {
+  font-size: 16px;
+  line-height: 1.8;
+  color: rgba(245,240,232,0.7);
+  font-weight: 300;
+}
+
+.teamSection {
+  padding: 100px 60px;
+  background: var(--black-2);
+  border-top: 1px solid rgba(201,168,76,0.1);
+}
+
+.teamGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 30px;
+  margin-top: 50px;
+  max-width: 320px;
+}
+
+.teamCard {
+  background: var(--black-3);
+  border: 1px solid rgba(201,168,76,0.1);
+  padding: 40px;
+  text-align: center;
+  transition: transform 0.3s;
+}
+.teamCard:hover { transform: translateY(-5px); border-color: var(--gold); }
+
+.teamAvatar {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  color: var(--black);
+  margin: 0 auto 16px;
+}
+
+.teamRole {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+
+.teamName {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 24px;
+  letter-spacing: 1px;
+  color: var(--white);
+}
