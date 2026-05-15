@@ -1,45 +1,32 @@
-const JCB_URL = import.meta.env.VITE_JCB_API_URL
-const JCB_KEY = import.meta.env.VITE_JCB_API_KEY
+// JCB API calls go through Supabase Edge Functions so the API key stays server-side.
+// Direct JCB calls from the browser are not allowed per JCB API security policy.
 
-const headers = () => ({
-  'Content-Type': 'application/json',
-  'Authorization': `Bearer ${JCB_KEY}`,
-})
+const FUNCTIONS_URL = `${import.meta.env.VITE_IPICK_URL}/functions/v1`
 
-export async function validateCard(cardNumber) {
-  const res = await fetch(`${JCB_URL}/api/v1/cards/validate`, {
+async function callFunction(name, body) {
+  const res = await fetch(`${FUNCTIONS_URL}/${name}`, {
     method: 'POST',
-    headers: headers(),
-    body: JSON.stringify({ card_number: cardNumber }),
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': import.meta.env.VITE_IPICK_KEY,
+      'Authorization': `Bearer ${import.meta.env.VITE_IPICK_KEY}`,
+    },
+    body: JSON.stringify(body),
   })
   return res.json()
 }
 
-export async function chargeCard({ cardNumber, amount, description, metadata }) {
-  const res = await fetch(`${JCB_URL}/api/v1/cards/charge`, {
-    method: 'POST',
-    headers: headers(),
-    body: JSON.stringify({
-      card_number: cardNumber,
-      amount,
-      description,
-      metadata,
-    }),
+// Place a bet — validates card, charges via JCB, records in user_bets
+export async function placeBet({ pickId, cardNumber, amount, userId }) {
+  return callFunction('place-bet', {
+    pick_id: pickId,
+    card_number: cardNumber,
+    amount,
+    user_id: userId,
   })
-  return res.json()
 }
 
-export async function getAccount(accountNumber) {
-  const res = await fetch(`${JCB_URL}/api/v1/accounts/${accountNumber}`, {
-    headers: headers(),
-  })
-  return res.json()
-}
-
-export async function getTransactions(accountNumber, limit = 20, offset = 0) {
-  const res = await fetch(
-    `${JCB_URL}/api/v1/transactions?account=${accountNumber}&limit=${limit}&offset=${offset}`,
-    { headers: headers() }
-  )
-  return res.json()
+// Payout winnings for a pick (admin only, called server-side)
+export async function payoutWin({ pickId, multiplier = 2 }) {
+  return callFunction('payout-win', { pick_id: pickId, multiplier })
 }

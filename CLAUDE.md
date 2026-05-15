@@ -104,9 +104,38 @@ Gold/black theme. CSS variables in `globals.css`:
 - Fonts: **Bebas Neue** (headings), **Barlow Condensed** (labels/UI), **Barlow** (body)
 - Buttons use `clip-path: polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%)` for the angled look
 
+## Edge Functions (Supabase)
+
+JCB API key must never be in client-side code. All JCB calls go through Edge Functions:
+
+| Function | Purpose |
+|----------|---------|
+| `place-bet` | Validate card → charge via JCB → record bet in DB |
+| `payout-win` | Pay out all winning bets for a pick via `gambling_win` transaction |
+
+**Deploy:**
+```bash
+supabase functions deploy place-bet --project-ref veskcncrtjngnuxnglxg
+supabase functions deploy payout-win --project-ref veskcncrtjngnuxnglxg
+```
+
+**Required Edge Function secrets** (set in Supabase dashboard → Edge Functions → Secrets):
+```
+JCB_API_URL=https://jcb.jollaria.org
+JCB_API_KEY=jcb_live_407fd5e89b224d43aee57fd5ec5bbc7cdd8e9675731940af959c2b15e7eeb31b
+JPIX_JCB_ACCOUNT=<Jollar Picks partner JCB account number>
+JOLLARIA_URL=https://uazisatrosbxanporzwm.supabase.co
+JOLLARIA_SERVICE_KEY=<Jollarian Federation service role key>
+```
+
+## Database Setup
+
+Run `supabase/migrations/20260515_init.sql` in the i-pick Supabase SQL editor:
+**supabase.com → project veskcncrtjngnuxnglxg → SQL Editor → paste → Run**
+
 ## Notes
 
 - `.env` is gitignored — never commit it. See `.env.example` for required vars.
-- `VITE_JCB_API_KEY` needs to be filled in with the full Jollar Picks JCB key (prefix `jcb_live_407fd5e`).
-- The i-pick DB (`veskcncrtjngnuxnglxg`) may need its `picks` and `user_bets` tables created — see schema above.
-- MCP server for i-pick is configured in `.mcp.json` but requires authentication via `/mcp` in a Claude Code session opened from this directory.
+- JCB API key (`JCB_API_KEY` in `.env`) is NOT prefixed with `VITE_` — it must stay server-side only.
+- The i-pick DB MCP server is configured in `.mcp.json` but requires authentication via `/mcp` in a Claude Code session opened from this directory.
+- Betting flow: `place-bet` edge function → `gambling_loss` charge → win? → `payout-win` edge function → `gambling_win` transaction → loser bets need no action (charge already recorded).

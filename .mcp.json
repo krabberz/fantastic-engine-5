@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "supabase-ipick": {
-      "type": "http",
-      "url": "https://mcp.supabase.com/mcp?project_ref=veskcncrtjngnuxnglxg"
-    }
-  }
-}
