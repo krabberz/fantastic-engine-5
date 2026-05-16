@@ -1,27 +1,27 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { supabaseAuth } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
-  const [bankAccount, setBankAccount] = useState(null)
+  const [account, setAccount] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabaseAuth.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       if (session?.user) loadProfile(session.user.id)
       else setLoading(false)
     })
 
-    const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
       if (session?.user) loadProfile(session.user.id)
       else {
         setProfile(null)
-        setBankAccount(null)
+        setAccount(null)
         setLoading(false)
       }
     })
@@ -30,55 +30,63 @@ export function AuthProvider({ children }) {
   }, [])
 
   async function loadProfile(userId) {
-    const { data: profileData } = await supabaseAuth
+    const { data } = await supabase
       .from('profiles')
-      .select('id, full_name, display_name, email, role')
+      .select('id, full_name, display_name, jcb_card_number, jcb_account_number')
       .eq('id', userId)
       .single()
 
-    setProfile(profileData)
+    setProfile(data)
 
-    const { data: accountData } = await supabaseAuth
-      .from('bank_accounts')
-      .select('id, account_number, balance, account_type, is_frozen')
-      .eq('user_id', userId)
-      .eq('account_type', 'checking')
-      .single()
+    if (data?.jcb_account_number) {
+      const res = await fetch(
+        `${import.meta.env.VITE_IPICK_URL}/functions/v1/get-balance`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_IPICK_KEY,
+            'Authorization': `Bearer ${import.meta.env.VITE_IPICK_KEY}`,
+          },
+          body: JSON.stringify({ user_id: userId }),
+        }
+      )
+      const data2 = await res.json()
+      if (data2.ok) setAccount(data2.account)
+    }
 
-    setBankAccount(accountData)
     setLoading(false)
   }
 
   async function signIn(email, password) {
-    const { data, error } = await supabaseAuth.auth.signInWithPassword({ email, password })
-    return { data, error }
+    return supabase.auth.signInWithPassword({ email, password })
   }
 
-  async function signUp(email, password, { fullName, displayName }) {
-    const { data, error } = await supabaseAuth.auth.signUp({ email, password })
-    if (error || !data.user) return { data, error }
+  async function signUp(email, password, { fullName, displayName, jcbCardNumber, jcbAccountNumber }) {
+    const { data, error } = await supabase.auth.signUp({ email, password })
+    if (error || !data.user) return { error }
 
-    await supabaseAuth.from('profiles').upsert({
+    await supabase.from('profiles').upsert({
       id: data.user.id,
-      email,
       full_name: fullName,
       display_name: displayName || fullName,
-      role: 'citizen',
+      jcb_card_number: jcbCardNumber || null,
+      jcb_account_number: jcbAccountNumber || null,
     })
 
-    return { data, error: null }
+    return { error: null }
   }
 
   async function resetPassword(email, redirectTo) {
-    return supabaseAuth.auth.resetPasswordForEmail(email, { redirectTo })
+    return supabase.auth.resetPasswordForEmail(email, { redirectTo })
   }
 
   async function signOut() {
-    await supabaseAuth.auth.signOut()
+    await supabase.auth.signOut()
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, bankAccount, loading, signIn, signUp, resetPassword, signOut }}>
+    <AuthContext.Provider value={{ user, profile, account, loading, signIn, signUp, resetPassword, signOut }}>
       {children}
     </AuthContext.Provider>
   )

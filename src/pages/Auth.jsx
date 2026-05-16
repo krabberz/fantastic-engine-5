@@ -7,6 +7,8 @@ import styles from './Auth.module.css'
 
 export default function Auth() {
   const { signIn, signUp, resetPassword } = useAuth()
+  const IPICK_URL = import.meta.env.VITE_IPICK_URL
+  const IPICK_KEY = import.meta.env.VITE_IPICK_KEY
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -27,7 +29,10 @@ export default function Auth() {
   const [forgotLoading, setForgotLoading] = useState(false)
 
   // Signup state
-  const [form, setForm] = useState({ fullName: '', displayName: '', email: '', password: '', confirm: '' })
+  const [form, setForm] = useState({ fullName: '', displayName: '', email: '', password: '', confirm: '', jcbCard: '' })
+  const [cardInfo, setCardInfo] = useState(null)
+  const [cardError, setCardError] = useState(null)
+  const [cardChecking, setCardChecking] = useState(false)
   const [signupError, setSignupError] = useState(null)
   const [signupLoading, setSignupLoading] = useState(false)
 
@@ -56,6 +61,22 @@ export default function Auth() {
     else setForgotMsg('Reset link sent — check your email.')
   }
 
+  async function validateCard() {
+    if (!form.jcbCard || form.jcbCard.length < 16) return
+    setCardError(null)
+    setCardInfo(null)
+    setCardChecking(true)
+    const res = await fetch(`${IPICK_URL}/functions/v1/validate-card`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': IPICK_KEY, 'Authorization': `Bearer ${IPICK_KEY}` },
+      body: JSON.stringify({ card_number: form.jcbCard }),
+    })
+    const data = await res.json()
+    setCardChecking(false)
+    if (data.ok && data.account) setCardInfo(data.account)
+    else setCardError(data.error ?? 'Card not found or invalid.')
+  }
+
   async function handleSignup(e) {
     e.preventDefault()
     setSignupError(null)
@@ -65,6 +86,8 @@ export default function Auth() {
     const { error } = await signUp(form.email, form.password, {
       fullName: form.fullName,
       displayName: form.displayName || form.fullName,
+      jcbCardNumber: form.jcbCard || null,
+      jcbAccountNumber: cardInfo?.account_number ?? null,
     })
     setSignupLoading(false)
     if (error) setSignupError(error.message)
@@ -180,6 +203,34 @@ export default function Auth() {
                   <input type="password" placeholder="••••••••" value={form.confirm} onChange={setField('confirm')} className={styles.input} required />
                 </div>
               </div>
+              <div className={styles.field}>
+                <label className={styles.label}>JCB Card Number <span style={{ color: 'var(--grey)', fontWeight: 300 }}>(optional)</span></label>
+                <div className={styles.cardRow}>
+                  <input
+                    type="text"
+                    placeholder="16-digit card number"
+                    value={form.jcbCard}
+                    onChange={e => { setField('jcbCard')(e); setCardInfo(null); setCardError(null) }}
+                    className={styles.input}
+                    maxLength={16}
+                  />
+                  <button
+                    type="button"
+                    className={styles.lookupBtn}
+                    onClick={validateCard}
+                    disabled={cardChecking || form.jcbCard.length < 16}
+                  >
+                    {cardChecking ? '...' : 'Look up'}
+                  </button>
+                </div>
+                {cardInfo && (
+                  <p className={styles.success}>
+                    ✓ {cardInfo.owner_name} — Ɉ{Number(cardInfo.balance).toFixed(2)} ({cardInfo.account_number})
+                  </p>
+                )}
+                {cardError && <p className={styles.error}>{cardError}</p>}
+              </div>
+
               {signupError && <p className={styles.error}>{signupError}</p>}
               <button type="submit" className="btn-primary" disabled={signupLoading} style={{ width: '100%' }}>
                 {signupLoading ? 'Creating account...' : 'Create Account'}

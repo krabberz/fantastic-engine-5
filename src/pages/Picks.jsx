@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import Nav from '../components/Nav'
 import Footer from '../components/Footer'
-import { supabaseIpick } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import styles from './Picks.module.css'
 
@@ -15,7 +15,7 @@ export default function Picks() {
 
   useEffect(() => {
     async function load() {
-      let query = supabaseIpick
+      let query = supabase
         .from('picks')
         .select('*')
         .order('game_time', { ascending: true })

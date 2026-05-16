@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { supabaseIpick } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { useState } from 'react'
 import Nav from '../components/Nav'
 import Footer from '../components/Footer'
@@ -47,7 +47,7 @@ export default function Home() {
   const revealRefs = useRef([])
 
   useEffect(() => {
-    supabaseIpick
+    supabase
       .from('picks')
       .select('*')
       .eq('result', null)

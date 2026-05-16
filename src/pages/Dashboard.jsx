@@ -1,19 +1,19 @@
 import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { supabaseIpick } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import Nav from '../components/Nav'
 import Footer from '../components/Footer'
 import styles from './Dashboard.module.css'
 
 export default function Dashboard() {
-  const { user, profile, bankAccount, loading } = useAuth()
+  const { user, profile, account, loading } = useAuth()
   const [bets, setBets] = useState([])
   const [betsLoading, setBetsLoading] = useState(true)
 
   useEffect(() => {
     if (!user) return
-    supabaseIpick
+    supabase
       .from('user_bets')
       .select('*, picks(*)')
       .eq('user_id', user.id)
@@ -49,9 +49,9 @@ export default function Dashboard() {
         {/* Stats row */}
         <div className={styles.statsRow}>
           <div className={styles.statCard}>
-            <div className={styles.statVal}>{bankAccount ? `Ɉ${Number(bankAccount.balance).toFixed(2)}` : '—'}</div>
+            <div className={styles.statVal}>{account ? `Ɉ${Number(account.balance).toFixed(2)}` : '—'}</div>
             <div className={styles.statLabel}>Account Balance</div>
-            {bankAccount && <div className={styles.statSub}>{bankAccount.account_number}</div>}
+            {account && <div className={styles.statSub}>{account.account_number}</div>}
           </div>
           <div className={styles.statCard}>
             <div className={styles.statVal}>{winRate}%</div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabaseAuth } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import Nav from '../components/Nav'
 import Footer from '../components/Footer'
 import styles from './Auth.module.css'
@@ -17,7 +17,7 @@ export default function ResetPassword() {
   useEffect(() => {
     // Supabase redirects here with the session in the URL hash.
     // onAuthStateChange fires with event PASSWORD_RECOVERY once the hash is parsed.
-    const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') setReady(true)
     })
     return () => subscription.unsubscribe()
@@ -29,7 +29,7 @@ export default function ResetPassword() {
     if (password !== confirm) { setError('Passwords do not match.'); return }
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
     setLoading(true)
-    const { error: updateError } = await supabaseAuth.auth.updateUser({ password })
+    const { error: updateError } = await supabase.auth.updateUser({ password })
     setLoading(false)
     if (updateError) setError(updateError.message)
     else setSuccess(true)

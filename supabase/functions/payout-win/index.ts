@@ -1,31 +1,25 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// Called by admin after confirming a pick result = 'win'
-// Pays out all winning bets for a pick via JCB POST /transactions (gambling_win)
-
 const JCB_URL = Deno.env.get('JCB_API_URL')!
 const JCB_KEY = Deno.env.get('JCB_API_KEY')!
 const IPICK_URL = Deno.env.get('SUPABASE_URL')!
 const IPICK_SECRET = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-
-// Jollar Picks JCB partner account — receives bet charges, sends out winnings
 const JPIX_ACCOUNT = Deno.env.get('JPIX_JCB_ACCOUNT')!
 
-const corsHeaders = {
+const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
 
   try {
     const { pick_id, multiplier = 2 } = await req.json()
-    if (!pick_id) return Response.json({ ok: false, error: 'Missing pick_id' }, { status: 400, headers: corsHeaders })
+    if (!pick_id) return Response.json({ ok: false, error: 'Missing pick_id' }, { status: 400, headers: cors })
 
     const db = createClient(IPICK_URL, IPICK_SECRET)
 
-    // Get all pending bets on this pick
     const { data: bets, error } = await db
       .from('user_bets')
       .select('id, user_id, amount')
@@ -33,26 +27,19 @@ Deno.serve(async (req) => {
       .is('result', null)
 
     if (error || !bets?.length) {
-      return Response.json({ ok: false, error: error?.message ?? 'No pending bets' }, { status: 404, headers: corsHeaders })
+      return Response.json({ ok: false, error: error?.message ?? 'No pending bets' }, { status: 404, headers: cors })
     }
-
-    // Get each user's JCB account number from Jollarian Federation
-    const jollaria = createClient(
-      Deno.env.get('JOLLARIA_URL')!,
-      Deno.env.get('JOLLARIA_SERVICE_KEY')!
-    )
 
     const results = []
     for (const bet of bets) {
-      const { data: account } = await jollaria
-        .from('bank_accounts')
-        .select('account_number')
-        .eq('user_id', bet.user_id)
-        .eq('account_type', 'checking')
+      const { data: profile } = await db
+        .from('profiles')
+        .select('jcb_account_number')
+        .eq('id', bet.user_id)
         .single()
 
-      if (!account?.account_number) {
-        results.push({ bet_id: bet.id, ok: false, error: 'No JCB account found' })
+      if (!profile?.jcb_account_number) {
+        results.push({ bet_id: bet.id, ok: false, error: 'No JCB account linked' })
         continue
       }
 
@@ -64,7 +51,7 @@ Deno.serve(async (req) => {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${JCB_KEY}` },
         body: JSON.stringify({
           from_account: JPIX_ACCOUNT,
-          to_account: account.account_number,
+          to_account: profile.jcb_account_number,
           amount: payout,
           transaction_type: 'gambling_win',
           facilitator: 'Jollar Picks',
@@ -83,11 +70,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Mark pick result
     await db.from('picks').update({ result: 'win' }).eq('id', pick_id)
 
-    return Response.json({ ok: true, results }, { headers: corsHeaders })
+    return Response.json({ ok: true, results }, { headers: cors })
   } catch (err) {
-    return Response.json({ ok: false, error: String(err) }, { status: 500, headers: corsHeaders })
+    return Response.json({ ok: false, error: String(err) }, { status: 500, headers: cors })
   }
 })

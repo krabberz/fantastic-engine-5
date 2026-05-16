@@ -157,6 +157,27 @@
   align-items: center;
 }
 
+.cardRow {
+  display: flex;
+  gap: 8px;
+}
+
+.lookupBtn {
+  background: none;
+  border: 1px solid rgba(201,168,76,0.3);
+  color: var(--gold);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 0 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, border-color 0.2s;
+}
+.lookupBtn:hover:not(:disabled) { background: rgba(201,168,76,0.08); border-color: var(--gold); }
+.lookupBtn:disabled { opacity: 0.4; cursor: default; }
+
 .forgotLink {
   background: none;
   border: none;
