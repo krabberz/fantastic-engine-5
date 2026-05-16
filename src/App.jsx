@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard'
 import Auth from './pages/Auth'
 import Signup from './pages/Signup'
 import ResetPassword from './pages/ResetPassword'
+import Admin from './pages/Admin'
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="/login" element={<Auth />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/admin" element={<Admin />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
