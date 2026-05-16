@@ -54,12 +54,31 @@ export function AuthProvider({ children }) {
     return { data, error }
   }
 
+  async function signUp(email, password, { fullName, displayName }) {
+    const { data, error } = await supabaseAuth.auth.signUp({ email, password })
+    if (error || !data.user) return { data, error }
+
+    await supabaseAuth.from('profiles').upsert({
+      id: data.user.id,
+      email,
+      full_name: fullName,
+      display_name: displayName || fullName,
+      role: 'citizen',
+    })
+
+    return { data, error: null }
+  }
+
+  async function resetPassword(email, redirectTo) {
+    return supabaseAuth.auth.resetPasswordForEmail(email, { redirectTo })
+  }
+
   async function signOut() {
     await supabaseAuth.auth.signOut()
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, bankAccount, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, profile, bankAccount, loading, signIn, signUp, resetPassword, signOut }}>
       {children}
     </AuthContext.Provider>
   )

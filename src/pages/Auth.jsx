@@ -1,96 +1,196 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Nav from '../components/Nav'
 import Footer from '../components/Footer'
 import styles from './Auth.module.css'
 
 export default function Auth() {
-  const { signIn } = useAuth()
+  const { signIn, signUp, resetPassword } = useAuth()
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const tab = searchParams.get('tab') === 'signup' ? 'signup' : 'login'
+  function switchTab(t) { setSearchParams(t === 'login' ? {} : { tab: t }) }
+
+  // Login state
+  const [loginEmail, setLoginEmail] = useState('')
+  const [loginPassword, setLoginPassword] = useState('')
+  const [loginError, setLoginError] = useState(null)
+  const [loginLoading, setLoginLoading] = useState(false)
+
+  // Forgot password state
+  const [showForgot, setShowForgot] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotMsg, setForgotMsg] = useState(null)
+  const [forgotError, setForgotError] = useState(null)
+  const [forgotLoading, setForgotLoading] = useState(false)
+
+  // Signup state
+  const [form, setForm] = useState({ fullName: '', displayName: '', email: '', password: '', confirm: '' })
+  const [signupError, setSignupError] = useState(null)
+  const [signupLoading, setSignupLoading] = useState(false)
+
+  function setField(field) {
+    return e => setForm(f => ({ ...f, [field]: e.target.value }))
+  }
 
   async function handleLogin(e) {
     e.preventDefault()
-    setError(null)
-    setLoading(true)
-    const { error: signInError } = await signIn(email, password)
-    setLoading(false)
-    if (signInError) {
-      setError(signInError.message)
-    } else {
-      navigate('/dashboard')
-    }
+    setLoginError(null)
+    setLoginLoading(true)
+    const { error } = await signIn(loginEmail, loginPassword)
+    setLoginLoading(false)
+    if (error) setLoginError(error.message)
+    else navigate('/dashboard')
   }
+
+  async function handleForgot(e) {
+    e.preventDefault()
+    setForgotError(null)
+    setForgotMsg(null)
+    setForgotLoading(true)
+    const { error } = await resetPassword(forgotEmail, `${window.location.origin}/reset-password`)
+    setForgotLoading(false)
+    if (error) setForgotError(error.message)
+    else setForgotMsg('Reset link sent — check your email.')
+  }
+
+  async function handleSignup(e) {
+    e.preventDefault()
+    setSignupError(null)
+    if (form.password !== form.confirm) { setSignupError('Passwords do not match.'); return }
+    if (form.password.length < 8) { setSignupError('Password must be at least 8 characters.'); return }
+    setSignupLoading(true)
+    const { error } = await signUp(form.email, form.password, {
+      fullName: form.fullName,
+      displayName: form.displayName || form.fullName,
+    })
+    setSignupLoading(false)
+    if (error) setSignupError(error.message)
+    else navigate('/dashboard')
+  }
+
+  const heroLabel = tab === 'signup' ? <>Create <span className="gold">Account</span></> : <>Log <span className="gold">In</span></>
 
   return (
     <>
       <Nav />
       <header className={styles.hero}>
-        <h1 className={styles.heroTitle}>
-          Sign Up <span className="gold">&amp;</span> Log In
-        </h1>
+        <h1 className={styles.heroTitle}>{heroLabel}</h1>
       </header>
 
       <section className={styles.section}>
-        <div className={styles.grid}>
-          {/* Sign up */}
-          <div className="reveal">
-            <div className="section-label">No Account?</div>
-            <h2 className={styles.formTitle}>Sign <span className="gold">Up</span></h2>
-            <p className={styles.formText}>
-              To use Jollar Picks you need a Jollarian Federation account with the National Bank of Jollaria.
-              If you don't have one yet,{' '}
-              <a
-                href="https://forms.gle/dnWuR5BHzLUS8qCSA"
-                target="_blank"
-                rel="noreferrer"
-                className={styles.link}
-              >
-                apply here
-              </a>.
-            </p>
-            <p className={styles.formText} style={{ marginTop: '16px' }}>
-              Once your account is active, return here to log in with your Jollarian Federation credentials.
-            </p>
+        <div className={styles.authCard}>
+
+          {/* Tabs */}
+          <div className={styles.tabs}>
+            <button className={`${styles.tab} ${tab === 'login' ? styles.tabActive : ''}`} onClick={() => { switchTab('login'); setShowForgot(false) }}>
+              Log In
+            </button>
+            <button className={`${styles.tab} ${tab === 'signup' ? styles.tabActive : ''}`} onClick={() => switchTab('signup')}>
+              Sign Up
+            </button>
           </div>
 
-          {/* Login */}
-          <div className={styles.loginBox}>
-            <div className="section-label">Have an Account?</div>
-            <h2 className={styles.formTitle}>Log <span className="gold">In</span></h2>
+          {/* Login panel */}
+          {tab === 'login' && !showForgot && (
             <form className={styles.form} onSubmit={handleLogin}>
               <div className={styles.field}>
+                <label className={styles.label}>Email</label>
+                <input type="email" placeholder="you@example.com" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} className={styles.input} required />
+              </div>
+              <div className={styles.field}>
+                <div className={styles.labelRow}>
+                  <label className={styles.label}>Password</label>
+                  <button type="button" className={styles.forgotLink} onClick={() => { setForgotEmail(loginEmail); setShowForgot(true) }}>
+                    Forgot password?
+                  </button>
+                </div>
+                <input type="password" placeholder="••••••••" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} className={styles.input} required />
+              </div>
+              {loginError && <p className={styles.error}>{loginError}</p>}
+              <button type="submit" className="btn-primary" disabled={loginLoading} style={{ width: '100%' }}>
+                {loginLoading ? 'Logging in...' : 'Log In'}
+              </button>
+              <p className={styles.switchHint}>
+                Don't have an account?{' '}
+                <button type="button" className={styles.switchLink} onClick={() => switchTab('signup')}>Sign up</button>
+              </p>
+            </form>
+          )}
+
+          {/* Forgot password panel */}
+          {tab === 'login' && showForgot && (
+            <div className={styles.form}>
+              <div className={styles.field}>
+                <div className="section-label" style={{ marginBottom: '4px' }}>Forgot Password</div>
+                <p className={styles.formText} style={{ marginBottom: '16px' }}>
+                  Enter your email and we'll send a reset link.
+                </p>
                 <label className={styles.label}>Email</label>
                 <input
                   type="email"
                   placeholder="you@example.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
+                  value={forgotEmail}
+                  onChange={e => setForgotEmail(e.target.value)}
                   className={styles.input}
-                  required
+                  autoFocus
                 />
+              </div>
+              {forgotError && <p className={styles.error}>{forgotError}</p>}
+              {forgotMsg && <p className={styles.success}>{forgotMsg}</p>}
+              {!forgotMsg && (
+                <button className="btn-primary" disabled={forgotLoading || !forgotEmail} onClick={handleForgot} style={{ width: '100%' }}>
+                  {forgotLoading ? 'Sending...' : 'Send Reset Link'}
+                </button>
+              )}
+              <p className={styles.switchHint}>
+                <button type="button" className={styles.switchLink} onClick={() => { setShowForgot(false); setForgotMsg(null); setForgotError(null) }}>
+                  ← Back to login
+                </button>
+              </p>
+            </div>
+          )}
+
+          {/* Signup panel */}
+          {tab === 'signup' && (
+            <form className={styles.form} onSubmit={handleSignup}>
+              <div className={styles.formRow}>
+                <div className={styles.field}>
+                  <label className={styles.label}>Full Name</label>
+                  <input type="text" placeholder="John Doe" value={form.fullName} onChange={setField('fullName')} className={styles.input} required />
+                </div>
+                <div className={styles.field}>
+                  <label className={styles.label}>Display Name</label>
+                  <input type="text" placeholder="JohnD (optional)" value={form.displayName} onChange={setField('displayName')} className={styles.input} />
+                </div>
               </div>
               <div className={styles.field}>
-                <label className={styles.label}>Password</label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className={styles.input}
-                  required
-                />
+                <label className={styles.label}>Email</label>
+                <input type="email" placeholder="you@example.com" value={form.email} onChange={setField('email')} className={styles.input} required />
               </div>
-              {error && <p className={styles.error}>{error}</p>}
-              <button type="submit" className="btn-primary" disabled={loading} style={{ width: '100%' }}>
-                {loading ? 'Logging in...' : 'Log In'}
+              <div className={styles.formRow}>
+                <div className={styles.field}>
+                  <label className={styles.label}>Password</label>
+                  <input type="password" placeholder="Min. 8 characters" value={form.password} onChange={setField('password')} className={styles.input} required />
+                </div>
+                <div className={styles.field}>
+                  <label className={styles.label}>Confirm Password</label>
+                  <input type="password" placeholder="••••••••" value={form.confirm} onChange={setField('confirm')} className={styles.input} required />
+                </div>
+              </div>
+              {signupError && <p className={styles.error}>{signupError}</p>}
+              <button type="submit" className="btn-primary" disabled={signupLoading} style={{ width: '100%' }}>
+                {signupLoading ? 'Creating account...' : 'Create Account'}
               </button>
+              <p className={styles.switchHint}>
+                Already have an account?{' '}
+                <button type="button" className={styles.switchLink} onClick={() => switchTab('login')}>Log in</button>
+              </p>
             </form>
-          </div>
+          )}
+
         </div>
       </section>
 

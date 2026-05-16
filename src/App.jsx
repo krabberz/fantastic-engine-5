@@ -5,6 +5,8 @@ import About from './pages/About'
 import Picks from './pages/Picks'
 import Dashboard from './pages/Dashboard'
 import Auth from './pages/Auth'
+import Signup from './pages/Signup'
+import ResetPassword from './pages/ResetPassword'
 
 export default function App() {
   return (
@@ -16,6 +18,8 @@ export default function App() {
           <Route path="/picks" element={<Picks />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/login" element={<Auth />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
