@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import styles from './Picks.module.css'
 
-const SPORTS = ['All', 'NBA', 'NFL', 'MLB', 'NHL', 'Soccer', 'NCAAF', 'NCAAB']
+const SPORTS = ['All', 'Pro Basketball', 'Pro Football', 'Pro Baseball', 'Pro Hockey', 'Pro Soccer', 'College Football', 'College Basketball']
 
 export default function Picks() {
   const { user } = useAuth()
