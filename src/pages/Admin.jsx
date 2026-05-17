@@ -151,7 +151,7 @@ export default function Admin() {
 
   if (loading) return null
   if (!user || !profile) return <Navigate to="/login" replace />
-  if (profile.role !== 'admin') return <Navigate to="/" replace />
+  if (profile.role !== 'admin' && profile.role !== 'superadmin') return <Navigate to="/" replace />
 
   const pending = picks.filter(p => !p.result)
   const settled = picks.filter(p => p.result)

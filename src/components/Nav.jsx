@@ -3,7 +3,8 @@ import { useAuth } from '../context/AuthContext'
 import styles from './Nav.module.css'
 
 export default function Nav() {
-  const { user, signOut } = useAuth()
+  const { user, profile, signOut } = useAuth()
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin'
   const navigate = useNavigate()
 
   async function handleSignOut() {
@@ -21,6 +22,7 @@ export default function Nav() {
         <li><Link to="/about">About</Link></li>
         <li><Link to="/picks">Picks</Link></li>
         {user && <li><Link to="/dashboard">Dashboard</Link></li>}
+        {isAdmin && <li><Link to="/admin">Admin</Link></li>}
       </ul>
       {user ? (
         <button className={styles.cta} onClick={handleSignOut}>Sign Out</button>
