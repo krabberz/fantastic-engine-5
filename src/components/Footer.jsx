@@ -34,7 +34,7 @@ export default function Footer() {
       </footer>
       <div className={styles.bottom}>
         <span>© 2026 Jollar Picks. All rights reserved.</span>
-        <span>Jollars are not exchangeable for any macronational currency. Legal age and up only.</span>
+        <span>Jollars are not directly nor indirectly exchangeable for any real macronational currency. Legal age and up only.</span>
       </div>
     </>
   )
