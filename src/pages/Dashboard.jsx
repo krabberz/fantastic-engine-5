@@ -6,6 +6,12 @@ import Nav from '../components/Nav'
 import Footer from '../components/Footer'
 import styles from './Dashboard.module.css'
 
+async function safeJson(res) {
+  const ct = res.headers.get('content-type') ?? ''
+  if (!ct.includes('application/json')) throw new Error(`Unexpected response (${res.status})`)
+  return res.json()
+}
+
 export default function Dashboard() {
   const { user, profile, account, loading, refreshProfile } = useAuth()
   const [bets, setBets] = useState([])
@@ -45,19 +51,30 @@ export default function Dashboard() {
     setCardError(null)
     setCardInfo(null)
     setCardValidating(true)
-    const res = await fetch(`${import.meta.env.VITE_IPICK_URL}/functions/v1/validate-card`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': import.meta.env.VITE_IPICK_KEY,
-        'Authorization': `Bearer ${import.meta.env.VITE_IPICK_KEY}`,
-      },
-      body: JSON.stringify({ card_number: cardInput }),
-    })
-    const data = await res.json()
+    try {
+      const validateRes = await fetch(`${import.meta.env.VITE_JCB_URL}/api/v1/cards/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${import.meta.env.VITE_JCB_KEY}` },
+        body: JSON.stringify({ card_number: cardInput }),
+      })
+      const validateData = await safeJson(validateRes)
+      if (!validateData?.ok || !validateData.data?.valid) {
+        setCardError(validateData?.data?.reason ?? validateData?.message ?? 'Card not found or invalid.')
+        setCardValidating(false)
+        return
+      }
+      const accountNumber = validateData.data.account_number
+      if (accountNumber) {
+        const accRes = await fetch(`${import.meta.env.VITE_JCB_URL}/api/v1/accounts/${accountNumber}`, {
+          headers: { 'Authorization': `Bearer ${import.meta.env.VITE_JCB_KEY}` },
+        })
+        const accData = await safeJson(accRes)
+        if (accData?.ok) setCardInfo(accData.data)
+      }
+    } catch (err) {
+      setCardError(err.message ?? 'Failed to reach JCB API.')
+    }
     setCardValidating(false)
-    if (data.ok && data.account) setCardInfo(data.account)
-    else setCardError(data.error ?? 'Card not found or invalid.')
   }
 
   async function saveCard() {
@@ -65,7 +82,7 @@ export default function Dashboard() {
     setCardSaving(true)
     const { error } = await supabase
       .from('profiles')
-      .update({ jcb_card_number: cardInput, jcb_account_number: cardInfo.account_number })
+      .update({ jcb_card_number: cardInput, jcb_account_number: cardInfo.account_number ?? cardInfo.id })
       .eq('id', user.id)
     setCardSaving(false)
     if (error) { setCardError(error.message); return }

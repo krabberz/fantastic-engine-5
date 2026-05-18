@@ -6,6 +6,15 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import styles from './Picks.module.css'
 
+const JCB_URL = import.meta.env.VITE_JCB_URL
+const JCB_KEY = import.meta.env.VITE_JCB_KEY
+
+async function safeJson(res) {
+  const ct = res.headers.get('content-type') ?? ''
+  if (!ct.includes('application/json')) throw new Error(`Unexpected response (${res.status})`)
+  return res.json()
+}
+
 const SPORTS = ['All', 'Pro Basketball', 'Pro Football', 'Pro Baseball', 'Pro Hockey', 'Pro Soccer', 'College Football', 'College Basketball']
 
 export default function Picks() {
@@ -48,30 +57,48 @@ export default function Picks() {
     if (!amount || amount <= 0) return
     setBetting(true)
     setBetMsg(null)
-    const res = await fetch(
-      `${import.meta.env.VITE_IPICK_URL}/functions/v1/place-bet`,
-      {
+
+    try {
+      // 1. Charge card via JCB directly
+      const ref = `BET-${betPick.id.slice(0, 8)}-${user.id.slice(0, 8)}-${Date.now()}`
+      const chargeRes = await fetch(`${JCB_URL}/api/v1/cards/charge`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': import.meta.env.VITE_IPICK_KEY,
-          'Authorization': `Bearer ${import.meta.env.VITE_IPICK_KEY}`,
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${JCB_KEY}` },
         body: JSON.stringify({
-          pick_id: betPick.id,
           card_number: profile.jcb_card_number,
           amount,
-          user_id: user.id,
+          transaction_type: 'gambling_loss',
+          description: `Jollar Picks — ${betPick.matchup}`,
+          reference: ref,
+          metadata: { pick_id: betPick.id, user_id: user.id, platform: 'Jollar Picks' },
         }),
+      })
+      const chargeData = await safeJson(chargeRes)
+
+      if (!chargeData?.ok) {
+        setBetMsg({ type: 'error', text: chargeData?.error?.message ?? chargeData?.message ?? 'Charge failed.' })
+        setBetting(false)
+        return
       }
-    )
-    const data = await res.json()
-    setBetting(false)
-    if (data.ok) {
-      setBetMsg({ type: 'success', text: `Bet placed! Ɉ${amount.toFixed(2)} charged.` })
-    } else {
-      setBetMsg({ type: 'error', text: data.error ?? 'Failed to place bet.' })
+
+      // 2. Record bet in Supabase
+      const { error: dbErr } = await supabase.from('user_bets').insert({
+        user_id: user.id,
+        pick_id: betPick.id,
+        amount,
+        jcb_transaction_ref: chargeData.data?.reference ?? ref,
+      })
+
+      if (dbErr) {
+        setBetMsg({ type: 'error', text: `Charged but failed to record bet — ref: ${chargeData.data?.reference ?? ref}` })
+      } else {
+        setBetMsg({ type: 'success', text: `Bet placed! Ɉ${amount.toFixed(2)} charged.` })
+      }
+    } catch (err) {
+      setBetMsg({ type: 'error', text: 'Failed to reach JCB API.' })
     }
+
+    setBetting(false)
   }
 
   const pending = picks.filter(p => !p.result)

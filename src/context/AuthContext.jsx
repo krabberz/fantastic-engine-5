@@ -1,6 +1,12 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
+async function safeJson(res) {
+  const ct = res.headers.get('content-type') ?? ''
+  if (!ct.includes('application/json')) return null
+  return res.json()
+}
+
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
@@ -38,21 +44,15 @@ export function AuthProvider({ children }) {
 
     setProfile(data)
 
-    if (data?.jcb_account_number) {
-      const res = await fetch(
-        `${import.meta.env.VITE_IPICK_URL}/functions/v1/get-balance`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': import.meta.env.VITE_IPICK_KEY,
-            'Authorization': `Bearer ${import.meta.env.VITE_IPICK_KEY}`,
-          },
-          body: JSON.stringify({ user_id: userId }),
-        }
-      )
-      const data2 = await res.json()
-      if (data2.ok) setAccount(data2.account)
+    if (data?.jcb_account_number && import.meta.env.VITE_JCB_URL) {
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_JCB_URL}/api/v1/accounts/${data.jcb_account_number}`,
+          { headers: { 'Authorization': `Bearer ${import.meta.env.VITE_JCB_KEY}` } }
+        )
+        const data2 = await safeJson(res)
+        if (data2?.ok) setAccount(data2.data)
+      } catch {}
     }
 
     setLoading(false)
