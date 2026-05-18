@@ -32,8 +32,8 @@ export default function About() {
               place your Jollars, and check back after the game for results.
             </p>
             <p className={styles.text} style={{ marginTop: '20px' }}>
-              Winnings are deposited directly to your National Bank of Jollaria account. All transactions are processed
-              via the Jollar Central Bank API.
+              Winnings are deposited directly to your bank account. All transactions are processed
+              via the JCB system.
             </p>
           </div>
         </div>

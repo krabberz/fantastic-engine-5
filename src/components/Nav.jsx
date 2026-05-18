@@ -21,6 +21,7 @@ export default function Nav() {
         <li><Link to="/">Home</Link></li>
         <li><Link to="/about">About</Link></li>
         <li><Link to="/picks">Picks</Link></li>
+        <li><Link to="/leagues">Leagues</Link></li>
         {user && <li><Link to="/dashboard">Dashboard</Link></li>}
         {isAdmin && <li><Link to="/admin">Admin</Link></li>}
       </ul>

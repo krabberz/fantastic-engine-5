@@ -30,6 +30,16 @@ export default function Admin() {
   const [allBets, setAllBets] = useState([])
   const [betsLoading, setBetsLoading] = useState(false)
 
+  // Leagues state
+  const [leagues, setLeagues] = useState([])
+  const [leaguesLoading, setLeaguesLoading] = useState(false)
+  const [leagueForm, setLeagueForm] = useState({ name: '', description: '', entry_fee: '10', rake: '2', closes_at: '' })
+  const [leaguePickIds, setLeaguePickIds] = useState([])
+  const [savingLeague, setSavingLeague] = useState(false)
+  const [leagueError, setLeagueError] = useState(null)
+  const [settlingLeague, setSettlingLeague] = useState(null)
+  const [settleLeagueMsg, setSettleLeagueMsg] = useState(null)
+
   useEffect(() => {
     if (!user || !profile || profile.role !== 'admin') return
     loadPicks()
@@ -51,6 +61,62 @@ export default function Admin() {
       .limit(100)
     setAllBets(data ?? [])
     setBetsLoading(false)
+  }
+
+  async function loadLeagues() {
+    setLeaguesLoading(true)
+    const { data } = await supabase.from('leagues').select('*').order('created_at', { ascending: false })
+    setLeagues(data ?? [])
+    setLeaguesLoading(false)
+  }
+
+  async function createLeague(e) {
+    e.preventDefault()
+    setLeagueError(null)
+    if (!leagueForm.name) { setLeagueError('Name is required.'); return }
+    if (leaguePickIds.length === 0) { setLeagueError('Select at least one pick.'); return }
+    setSavingLeague(true)
+    const { data: l, error } = await supabase.from('leagues').insert({
+      name: leagueForm.name,
+      description: leagueForm.description || null,
+      entry_fee: Number(leagueForm.entry_fee),
+      rake: Number(leagueForm.rake),
+      closes_at: leagueForm.closes_at ? new Date(leagueForm.closes_at).toISOString() : null,
+    }).select().single()
+    if (error || !l) { setLeagueError(error?.message ?? 'Failed to create league'); setSavingLeague(false); return }
+    await supabase.from('league_picks').insert(leaguePickIds.map(pick_id => ({ league_id: l.id, pick_id })))
+    setSavingLeague(false)
+    setLeagueForm({ name: '', description: '', entry_fee: '10', rake: '2', closes_at: '' })
+    setLeaguePickIds([])
+    loadLeagues()
+  }
+
+  async function lockLeague(id) {
+    await supabase.from('leagues').update({ status: 'locked' }).eq('id', id)
+    loadLeagues()
+  }
+
+  async function settleLeague(league) {
+    setSettlingLeague(league.id)
+    setSettleLeagueMsg(null)
+    const res = await fetch(
+      `${import.meta.env.VITE_IPICK_URL}/functions/v1/settle-league`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_IPICK_KEY,
+          'Authorization': `Bearer ${import.meta.env.VITE_IPICK_KEY}`,
+        },
+        body: JSON.stringify({ league_id: league.id }),
+      }
+    )
+    const data = await res.json()
+    setSettleLeagueMsg(data.ok
+      ? `Settled! Prize pool: Ɉ${data.prize_pool?.toFixed(2)}`
+      : `Error: ${data.error}`)
+    setSettlingLeague(null)
+    loadLeagues()
   }
 
   function openAdd() {
@@ -168,6 +234,7 @@ export default function Admin() {
         <div className={styles.tabs}>
           <button className={`${styles.tab} ${tab === 'picks' ? styles.tabActive : ''}`} onClick={() => setTab('picks')}>Picks</button>
           <button className={`${styles.tab} ${tab === 'bets' ? styles.tabActive : ''}`} onClick={() => { setTab('bets'); if (!allBets.length) loadBets() }}>All Bets</button>
+          <button className={`${styles.tab} ${tab === 'leagues' ? styles.tabActive : ''}`} onClick={() => { setTab('leagues'); if (!leagues.length) loadLeagues() }}>Leagues</button>
         </div>
 
         {tab === 'picks' && (
@@ -223,6 +290,102 @@ export default function Admin() {
               ))}
             </div>
           )
+        )}
+
+        {tab === 'leagues' && (
+          <>
+            {/* Create league form */}
+            <div className={styles.leagueCreateBox}>
+              <h3 className={styles.leagueCreateTitle}>Create League</h3>
+              <form onSubmit={createLeague} className={styles.leagueForm}>
+                <div className={styles.row}>
+                  <div className={styles.field}>
+                    <label className={styles.label}>Name</label>
+                    <input type="text" value={leagueForm.name} onChange={e => setLeagueForm(f => ({ ...f, name: e.target.value }))} className={styles.input} placeholder="Week 12 NBA Parlay" required />
+                  </div>
+                  <div className={styles.field}>
+                    <label className={styles.label}>Description (optional)</label>
+                    <input type="text" value={leagueForm.description} onChange={e => setLeagueForm(f => ({ ...f, description: e.target.value }))} className={styles.input} placeholder="Pick all 5 games correctly to win" />
+                  </div>
+                </div>
+                <div className={styles.row}>
+                  <div className={styles.field}>
+                    <label className={styles.label}>Entry Fee (Ɉ)</label>
+                    <input type="number" min="10" step="1" value={leagueForm.entry_fee} onChange={e => setLeagueForm(f => ({ ...f, entry_fee: e.target.value }))} className={styles.input} />
+                  </div>
+                  <div className={styles.field}>
+                    <label className={styles.label}>Rake (Ɉ)</label>
+                    <input type="number" min="0" step="1" value={leagueForm.rake} onChange={e => setLeagueForm(f => ({ ...f, rake: e.target.value }))} className={styles.input} />
+                  </div>
+                  <div className={styles.field}>
+                    <label className={styles.label}>Closes At</label>
+                    <input type="datetime-local" value={leagueForm.closes_at} onChange={e => setLeagueForm(f => ({ ...f, closes_at: e.target.value }))} className={styles.input} />
+                  </div>
+                </div>
+                <div className={styles.field}>
+                  <label className={styles.label}>Include Picks (select pending)</label>
+                  <div className={styles.pickCheckList}>
+                    {picks.filter(p => !p.result).map(pick => (
+                      <label key={pick.id} className={styles.pickCheck}>
+                        <input
+                          type="checkbox"
+                          checked={leaguePickIds.includes(pick.id)}
+                          onChange={e => setLeaguePickIds(ids => e.target.checked ? [...ids, pick.id] : ids.filter(i => i !== pick.id))}
+                        />
+                        <span>{pick.sport} — {pick.matchup}</span>
+                      </label>
+                    ))}
+                    {picks.filter(p => !p.result).length === 0 && <span className={styles.empty}>No pending picks. Add some first.</span>}
+                  </div>
+                </div>
+                {leagueError && <p className={styles.error}>{leagueError}</p>}
+                <button type="submit" className="btn-primary" disabled={savingLeague}>
+                  {savingLeague ? 'Creating...' : 'Create League'}
+                </button>
+              </form>
+            </div>
+
+            {/* League list */}
+            {settleLeagueMsg && <p className={styles.settleMsg}>{settleLeagueMsg}</p>}
+            {leaguesLoading ? (
+              <p className={styles.empty}>Loading...</p>
+            ) : leagues.length === 0 ? (
+              <p className={styles.empty}>No leagues yet.</p>
+            ) : (
+              <div className={styles.leagueList}>
+                {leagues.map(l => {
+                  const prizePool = (Number(l.entry_fee) - Number(l.rake)) * Number(l.entry_count)
+                  return (
+                    <div key={l.id} className={styles.leagueRow}>
+                      <div className={styles.leagueInfo}>
+                        <div className={styles.leagueName}>{l.name}</div>
+                        <div className={styles.leagueMeta}>
+                          {l.entry_count} entries · Ɉ{prizePool.toFixed(2)} pool · Fee Ɉ{l.entry_fee} / Rake Ɉ{l.rake}
+                        </div>
+                      </div>
+                      <div className={styles.leagueActions}>
+                        <span className={`${styles.tag} ${l.status === 'open' ? styles.pending : l.status === 'settled' ? styles.win : styles.push}`}>
+                          {l.status.toUpperCase()}
+                        </span>
+                        {l.status === 'open' && (
+                          <button className={styles.settleBtn} onClick={() => lockLeague(l.id)}>Lock</button>
+                        )}
+                        {l.status === 'locked' && (
+                          <button
+                            className={`${styles.settleBtn}`}
+                            disabled={settlingLeague === l.id}
+                            onClick={() => settleLeague(l)}
+                          >
+                            {settlingLeague === l.id ? '...' : 'Settle'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </>
         )}
       </section>
 
