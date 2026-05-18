@@ -67,7 +67,7 @@ export default function Picks() {
         body: JSON.stringify({
           card_number: profile.jcb_card_number,
           amount,
-          transaction_type: 'gambling_loss',
+          transaction_type: 'purchase',
           description: `Jollar Picks — ${betPick.matchup}`,
           reference: ref,
           metadata: { pick_id: betPick.id, user_id: user.id, platform: 'Jollar Picks' },
