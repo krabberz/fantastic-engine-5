@@ -190,6 +190,12 @@ export default function Picks() {
                     required
                   />
                 </div>
+                {parseFloat(betAmount) > 0 && (
+                  <div className={styles.payoutRow}>
+                    <span className={styles.payoutLabel}>Potential Win</span>
+                    <span className={styles.payoutVal}>Ɉ{(parseFloat(betAmount) * 2).toFixed(2)}</span>
+                  </div>
+                )}
                 {betMsg?.type === 'error' && <p className={styles.betError}>{betMsg.text}</p>}
                 <div className={styles.betActions}>
                   <button type="button" className={styles.cancelBtn} disabled={betting} onClick={() => setBetPick(null)}>Cancel</button>
