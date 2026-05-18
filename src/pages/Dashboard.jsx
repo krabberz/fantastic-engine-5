@@ -63,13 +63,21 @@ export default function Dashboard() {
         setCardValidating(false)
         return
       }
+
+      // Card is valid — set info immediately so save button enables
+      const info = { ...validateData.data, card_number: cardInput }
+      setCardInfo(info)
+
+      // Enrich with account details if account_number is present
       const accountNumber = validateData.data.account_number
       if (accountNumber) {
-        const accRes = await fetch(`${import.meta.env.VITE_JCB_URL}/api/v1/accounts/${accountNumber}`, {
-          headers: { 'Authorization': `Bearer ${import.meta.env.VITE_JCB_KEY}` },
-        })
-        const accData = await safeJson(accRes)
-        if (accData?.ok) setCardInfo(accData.data)
+        try {
+          const accRes = await fetch(`${import.meta.env.VITE_JCB_URL}/api/v1/accounts/${accountNumber}`, {
+            headers: { 'Authorization': `Bearer ${import.meta.env.VITE_JCB_KEY}` },
+          })
+          const accData = await safeJson(accRes)
+          if (accData?.ok) setCardInfo({ ...info, ...accData.data })
+        } catch {}
       }
     } catch (err) {
       setCardError(err.message ?? 'Failed to reach JCB API.')
@@ -82,7 +90,10 @@ export default function Dashboard() {
     setCardSaving(true)
     const { error } = await supabase
       .from('profiles')
-      .update({ jcb_card_number: cardInput, jcb_account_number: cardInfo.account_number ?? cardInfo.id })
+      .update({
+        jcb_card_number: cardInput,
+        jcb_account_number: cardInfo.account_number ?? null,
+      })
       .eq('id', user.id)
     setCardSaving(false)
     if (error) { setCardError(error.message); return }
@@ -198,7 +209,10 @@ export default function Dashboard() {
               </div>
               {cardInfo && (
                 <p className={styles.cardSuccess}>
-                  ✓ {cardInfo.owner_name} — Ɉ{Number(cardInfo.balance).toFixed(2)} ({cardInfo.account_number})
+                  ✓ Card verified
+                  {cardInfo.owner_name ? ` — ${cardInfo.owner_name}` : ''}
+                  {cardInfo.account_number ? ` (${cardInfo.account_number})` : ''}
+                  {cardInfo.balance != null ? ` · Ɉ${Number(cardInfo.balance).toFixed(2)}` : ''}
                 </p>
               )}
               {cardError && <p className={styles.cardErr}>{cardError}</p>}
