@@ -62,7 +62,7 @@ export function AuthProvider({ children }) {
     return supabase.auth.signInWithPassword({ email, password })
   }
 
-  async function signUp(email, password, { fullName, displayName, jcbCardNumber, jcbAccountNumber }) {
+  async function signUp(email, password, { fullName, displayName }) {
     const { data, error } = await supabase.auth.signUp({ email, password })
     if (error || !data.user) return { error }
 
@@ -70,8 +70,6 @@ export function AuthProvider({ children }) {
       id: data.user.id,
       full_name: fullName,
       display_name: displayName || fullName,
-      jcb_card_number: jcbCardNumber || null,
-      jcb_account_number: jcbAccountNumber || null,
     })
 
     return { error: null }
@@ -85,8 +83,12 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut()
   }
 
+  async function refreshProfile() {
+    if (user) await loadProfile(user.id)
+  }
+
   return (
-    <AuthContext.Provider value={{ user, profile, account, loading, signIn, signUp, resetPassword, signOut }}>
+    <AuthContext.Provider value={{ user, profile, account, loading, signIn, signUp, resetPassword, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   )

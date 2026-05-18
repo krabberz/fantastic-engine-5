@@ -179,3 +179,155 @@
   text-align: center;
   padding: 80px 0;
 }
+
+.pickBottomRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.betBtn {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--black);
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  border: none;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+.betBtn:hover { opacity: 0.85; }
+
+/* Bet modal */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 20px;
+}
+
+.modal {
+  background: var(--black-2);
+  border: 1px solid rgba(201,168,76,0.2);
+  padding: 40px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.modalSport {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+
+.modalTitle {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 36px;
+  letter-spacing: 1px;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.modalSub {
+  font-size: 13px;
+  color: var(--grey);
+  margin-bottom: 28px;
+}
+
+.betForm { display: flex; flex-direction: column; gap: 16px; }
+
+.cardHint {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--grey);
+  padding: 10px 14px;
+  background: var(--black-3);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+
+.label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--grey);
+}
+
+.input {
+  background: var(--black-3);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--white);
+  padding: 12px 16px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+  box-sizing: border-box;
+}
+.input:focus { border-color: rgba(201,168,76,0.5); }
+
+.betActions {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.cancelBtn {
+  flex: 1;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--grey);
+  background: var(--black-3);
+  border: 1px solid rgba(255,255,255,0.08);
+  padding: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.cancelBtn:hover { border-color: rgba(255,255,255,0.2); }
+
+.betSuccess {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 15px;
+  color: #4CAF50;
+  letter-spacing: 1px;
+  padding: 14px;
+  background: #1a3a1a;
+  border: 1px solid rgba(76,175,80,0.2);
+}
+
+.betError {
+  font-size: 13px;
+  color: #e05252;
+}
+
+.noCard {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px;
+  letter-spacing: 1px;
+  color: var(--grey);
+  padding: 16px;
+  background: var(--black-3);
+  border: 1px solid rgba(255,255,255,0.06);
+  text-align: center;
+}

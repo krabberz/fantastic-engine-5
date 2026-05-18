@@ -7,9 +7,17 @@ import Footer from '../components/Footer'
 import styles from './Dashboard.module.css'
 
 export default function Dashboard() {
-  const { user, profile, account, loading } = useAuth()
+  const { user, profile, account, loading, refreshProfile } = useAuth()
   const [bets, setBets] = useState([])
   const [betsLoading, setBetsLoading] = useState(true)
+
+  // Payment methods state
+  const [editingCard, setEditingCard] = useState(false)
+  const [cardInput, setCardInput] = useState('')
+  const [cardValidating, setCardValidating] = useState(false)
+  const [cardInfo, setCardInfo] = useState(null)
+  const [cardSaving, setCardSaving] = useState(false)
+  const [cardError, setCardError] = useState(null)
 
   useEffect(() => {
     if (!user) return
@@ -25,6 +33,53 @@ export default function Dashboard() {
       })
   }, [user])
 
+  function startEditCard() {
+    setCardInput('')
+    setCardInfo(null)
+    setCardError(null)
+    setEditingCard(true)
+  }
+
+  async function validateCard() {
+    if (cardInput.length < 16) return
+    setCardError(null)
+    setCardInfo(null)
+    setCardValidating(true)
+    const res = await fetch(`${import.meta.env.VITE_IPICK_URL}/functions/v1/validate-card`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': import.meta.env.VITE_IPICK_KEY,
+        'Authorization': `Bearer ${import.meta.env.VITE_IPICK_KEY}`,
+      },
+      body: JSON.stringify({ card_number: cardInput }),
+    })
+    const data = await res.json()
+    setCardValidating(false)
+    if (data.ok && data.account) setCardInfo(data.account)
+    else setCardError(data.error ?? 'Card not found or invalid.')
+  }
+
+  async function saveCard() {
+    if (!cardInfo) return
+    setCardSaving(true)
+    const { error } = await supabase
+      .from('profiles')
+      .update({ jcb_card_number: cardInput, jcb_account_number: cardInfo.account_number })
+      .eq('id', user.id)
+    setCardSaving(false)
+    if (error) { setCardError(error.message); return }
+    setEditingCard(false)
+    await refreshProfile()
+  }
+
+  async function removeCard() {
+    if (!confirm('Remove your linked card?')) return
+    await supabase.from('profiles').update({ jcb_card_number: null, jcb_account_number: null }).eq('id', user.id)
+    setEditingCard(false)
+    await refreshProfile()
+  }
+
   if (loading) return null
   if (!user) return <Navigate to="/login" replace />
 
@@ -32,6 +87,10 @@ export default function Dashboard() {
   const losses = bets.filter(b => b.result === 'loss').length
   const pending = bets.filter(b => !b.result).length
   const winRate = bets.length > 0 ? Math.round((wins / (wins + losses || 1)) * 100) : 0
+
+  const maskedCard = profile?.jcb_card_number
+    ? `•••• •••• •••• ${profile.jcb_card_number.slice(-4)}`
+    : null
 
   return (
     <>
@@ -69,6 +128,75 @@ export default function Dashboard() {
             <div className={styles.statVal}>{pending}</div>
             <div className={styles.statLabel}>Pending</div>
           </div>
+        </div>
+
+        {/* Payment methods */}
+        <div className={styles.paymentSection}>
+          <div className={styles.paymentHeader}>
+            <div>
+              <div className="section-label" style={{ marginBottom: 4 }}>Wallet</div>
+              <h2 className={styles.paymentTitle}>Payment <span className="gold">Methods</span></h2>
+            </div>
+            {!editingCard && (
+              <button className={styles.addCardBtn} onClick={startEditCard}>
+                {maskedCard ? 'Change Card' : '+ Add Card'}
+              </button>
+            )}
+          </div>
+
+          {!editingCard ? (
+            <div className={styles.cardDisplay}>
+              {maskedCard ? (
+                <>
+                  <div className={styles.cardChip} />
+                  <div className={styles.cardNumber}>{maskedCard}</div>
+                  <div className={styles.cardMeta}>
+                    <span className={styles.cardDefault}>DEFAULT</span>
+                    <button className={styles.removeCardBtn} onClick={removeCard}>Remove</button>
+                  </div>
+                </>
+              ) : (
+                <p className={styles.noCardMsg}>No payment method linked. Add a JCB card to place bets.</p>
+              )}
+            </div>
+          ) : (
+            <div className={styles.cardEditPanel}>
+              <div className={styles.cardEditRow}>
+                <input
+                  type="text"
+                  placeholder="16-digit JCB card number"
+                  value={cardInput}
+                  onChange={e => { setCardInput(e.target.value.replace(/\D/g, '').slice(0, 16)); setCardInfo(null); setCardError(null) }}
+                  className={styles.cardInput}
+                  maxLength={16}
+                  autoFocus
+                />
+                <button
+                  className={styles.verifyBtn}
+                  onClick={validateCard}
+                  disabled={cardValidating || cardInput.length < 16}
+                >
+                  {cardValidating ? '...' : 'Verify'}
+                </button>
+              </div>
+              {cardInfo && (
+                <p className={styles.cardSuccess}>
+                  ✓ {cardInfo.owner_name} — Ɉ{Number(cardInfo.balance).toFixed(2)} ({cardInfo.account_number})
+                </p>
+              )}
+              {cardError && <p className={styles.cardErr}>{cardError}</p>}
+              <div className={styles.cardEditActions}>
+                <button className={styles.cancelEditBtn} onClick={() => setEditingCard(false)}>Cancel</button>
+                <button
+                  className="btn-primary"
+                  onClick={saveCard}
+                  disabled={!cardInfo || cardSaving}
+                >
+                  {cardSaving ? 'Saving...' : 'Save as Default'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Bet history */}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import Nav from '../components/Nav'
 import Footer from '../components/Footer'
 import { supabase } from '../lib/supabase'
@@ -8,10 +9,15 @@ import styles from './Picks.module.css'
 const SPORTS = ['All', 'Pro Basketball', 'Pro Football', 'Pro Baseball', 'Pro Hockey', 'Pro Soccer', 'College Football', 'College Basketball']
 
 export default function Picks() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const [picks, setPicks] = useState([])
   const [filter, setFilter] = useState('All')
   const [loading, setLoading] = useState(true)
+
+  const [betPick, setBetPick] = useState(null)
+  const [betAmount, setBetAmount] = useState('')
+  const [betting, setBetting] = useState(false)
+  const [betMsg, setBetMsg] = useState(null)
 
   useEffect(() => {
     async function load() {
@@ -29,6 +35,45 @@ export default function Picks() {
     load()
   }, [filter])
 
+  function openBet(pick) {
+    setBetPick(pick)
+    setBetAmount('')
+    setBetMsg(null)
+  }
+
+  async function placeBet(e) {
+    e.preventDefault()
+    if (!profile?.jcb_card_number) return
+    const amount = parseFloat(betAmount)
+    if (!amount || amount <= 0) return
+    setBetting(true)
+    setBetMsg(null)
+    const res = await fetch(
+      `${import.meta.env.VITE_IPICK_URL}/functions/v1/place-bet`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_IPICK_KEY,
+          'Authorization': `Bearer ${import.meta.env.VITE_IPICK_KEY}`,
+        },
+        body: JSON.stringify({
+          pick_id: betPick.id,
+          card_number: profile.jcb_card_number,
+          amount,
+          user_id: user.id,
+        }),
+      }
+    )
+    const data = await res.json()
+    setBetting(false)
+    if (data.ok) {
+      setBetMsg({ type: 'success', text: `Bet placed! Ɉ${amount.toFixed(2)} charged.` })
+    } else {
+      setBetMsg({ type: 'error', text: data.error ?? 'Failed to place bet.' })
+    }
+  }
+
   const pending = picks.filter(p => !p.result)
   const completed = picks.filter(p => p.result)
 
@@ -40,7 +85,6 @@ export default function Picks() {
       </header>
 
       <section className={styles.section}>
-        {/* Sport filter */}
         <div className={styles.filters}>
           {SPORTS.map(sport => (
             <button
@@ -60,7 +104,7 @@ export default function Picks() {
         ) : (
           <div className={styles.picksGrid}>
             {pending.map(pick => (
-              <PickCard key={pick.id} pick={pick} user={user} />
+              <PickCard key={pick.id} pick={pick} user={user} onBet={() => openBet(pick)} />
             ))}
           </div>
         )}
@@ -79,12 +123,65 @@ export default function Picks() {
         )}
       </section>
 
+      {/* Bet modal */}
+      {betPick && (
+        <div className={styles.overlay} onClick={e => e.target === e.currentTarget && !betting && setBetPick(null)}>
+          <div className={styles.modal}>
+            <div className={styles.modalSport}>{betPick.sport}</div>
+            <h2 className={styles.modalTitle}>{betPick.matchup}</h2>
+            <p className={styles.modalSub}>{betPick.teams}</p>
+
+            {!profile?.jcb_card_number ? (
+              <>
+                <p className={styles.noCard}>No payment method linked to your account.</p>
+                <Link to="/dashboard" className="btn-primary" style={{ display: 'block', textAlign: 'center', marginTop: 16 }}>
+                  Add Card in Dashboard
+                </Link>
+                <button className={styles.cancelBtn} style={{ marginTop: 12 }} onClick={() => setBetPick(null)}>Cancel</button>
+              </>
+            ) : betMsg?.type === 'success' ? (
+              <>
+                <p className={styles.betSuccess}>{betMsg.text}</p>
+                <button className="btn-primary" style={{ width: '100%', marginTop: 16 }} onClick={() => setBetPick(null)}>Done</button>
+              </>
+            ) : (
+              <form onSubmit={placeBet} className={styles.betForm}>
+                <div className={styles.cardHint}>
+                  Card: •••• {profile.jcb_card_number.slice(-4)}
+                </div>
+                <div className={styles.field}>
+                  <label className={styles.label}>Amount (Ɉ)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="0.01"
+                    placeholder="25.00"
+                    value={betAmount}
+                    onChange={e => setBetAmount(e.target.value)}
+                    className={styles.input}
+                    autoFocus
+                    required
+                  />
+                </div>
+                {betMsg?.type === 'error' && <p className={styles.betError}>{betMsg.text}</p>}
+                <div className={styles.betActions}>
+                  <button type="button" className={styles.cancelBtn} disabled={betting} onClick={() => setBetPick(null)}>Cancel</button>
+                  <button type="submit" className="btn-primary" disabled={betting || !betAmount}>
+                    {betting ? 'Placing...' : 'Place Bet'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
       <Footer />
     </>
   )
 }
 
-function PickCard({ pick, completed }) {
+function PickCard({ pick, user, completed, onBet }) {
   const gameTime = new Date(pick.game_time)
   const timeStr = gameTime.toLocaleString('en-US', {
     weekday: 'short', month: 'short', day: 'numeric',
@@ -114,7 +211,12 @@ function PickCard({ pick, completed }) {
           </div>
         </div>
         {!completed && (
-          <div className={styles.oddsTag}>{pick.odds ?? 'N/A'}</div>
+          <div className={styles.pickBottomRight}>
+            <div className={styles.oddsTag}>{pick.odds ?? 'N/A'}</div>
+            {user && (
+              <button className={styles.betBtn} onClick={onBet}>Place Bet</button>
+            )}
+          </div>
         )}
       </div>
     </div>
