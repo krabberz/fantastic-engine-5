@@ -32,7 +32,7 @@ export function AuthProvider({ children }) {
   async function loadProfile(userId) {
     const { data } = await supabase
       .from('profiles')
-      .select('id, full_name, display_name, jcb_card_number, jcb_account_number')
+      .select('id, full_name, display_name, role, jcb_card_number, jcb_account_number')
       .eq('id', userId)
       .single()
 
