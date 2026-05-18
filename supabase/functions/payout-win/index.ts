@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
         continue
       }
 
-      const payout = Number(bet.amount) * multiplier
+      const payout = Math.round(Number(bet.amount) * multiplier)
       const ref = `WIN-${bet.id.slice(0, 8)}-${Date.now()}`
 
       const txRes = await fetch(`${JCB_URL}/api/v1/transactions`, {

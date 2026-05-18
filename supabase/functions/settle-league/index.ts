@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
     for (let i = 0; i < scored.length; i++) {
       const entry = scored[i]
       const rank = i + 1
-      const payoutAmount = rank <= 3 ? Math.round(prizePool * splits[i] * 100) / 100 : 0
+      const payoutAmount = rank <= 3 ? Math.round(prizePool * splits[i]) : 0
 
       if (payoutAmount > 0) {
         const { data: profile } = await db

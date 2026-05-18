@@ -33,7 +33,8 @@ export default function Admin() {
   // Leagues state
   const [leagues, setLeagues] = useState([])
   const [leaguesLoading, setLeaguesLoading] = useState(false)
-  const [leagueForm, setLeagueForm] = useState({ name: '', description: '', entry_fee: '10', rake: '2', closes_at: '' })
+  const LEAGUE_RAKE = 2
+  const [leagueForm, setLeagueForm] = useState({ name: '', description: '', entry_fee: '10', closes_at: '' })
   const [leaguePickIds, setLeaguePickIds] = useState([])
   const [savingLeague, setSavingLeague] = useState(false)
   const [leagueError, setLeagueError] = useState(null)
@@ -80,13 +81,13 @@ export default function Admin() {
       name: leagueForm.name,
       description: leagueForm.description || null,
       entry_fee: Number(leagueForm.entry_fee),
-      rake: Number(leagueForm.rake),
+      rake: LEAGUE_RAKE,
       closes_at: leagueForm.closes_at ? new Date(leagueForm.closes_at).toISOString() : null,
     }).select().single()
     if (error || !l) { setLeagueError(error?.message ?? 'Failed to create league'); setSavingLeague(false); return }
     await supabase.from('league_picks').insert(leaguePickIds.map(pick_id => ({ league_id: l.id, pick_id })))
     setSavingLeague(false)
-    setLeagueForm({ name: '', description: '', entry_fee: '10', rake: '2', closes_at: '' })
+    setLeagueForm({ name: '', description: '', entry_fee: '10', closes_at: '' })
     setLeaguePickIds([])
     loadLeagues()
   }
@@ -314,8 +315,8 @@ export default function Admin() {
                     <input type="number" min="10" step="1" value={leagueForm.entry_fee} onChange={e => setLeagueForm(f => ({ ...f, entry_fee: e.target.value }))} className={styles.input} />
                   </div>
                   <div className={styles.field}>
-                    <label className={styles.label}>Rake (Ɉ)</label>
-                    <input type="number" min="0" step="1" value={leagueForm.rake} onChange={e => setLeagueForm(f => ({ ...f, rake: e.target.value }))} className={styles.input} />
+                    <label className={styles.label}>Rake (fixed)</label>
+                    <div className={styles.input} style={{ display: 'flex', alignItems: 'center', opacity: 0.6, cursor: 'default' }}>Ɉ{LEAGUE_RAKE} per entry</div>
                   </div>
                   <div className={styles.field}>
                     <label className={styles.label}>Closes At</label>

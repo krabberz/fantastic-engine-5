@@ -15,7 +15,7 @@ async function safeJson(res) {
   return res.json()
 }
 
-const SPORTS = ['All', 'Pro Basketball', 'Pro Football', 'Pro Baseball', 'Pro Hockey', 'Pro Soccer', 'College Football', 'College Basketball']
+const SPORTS = ['All', 'NBA', 'NFL', 'MLB', 'NHL', 'Soccer', 'NCAAF', 'NCAAB', 'Bundesliga', 'EPL', 'MLS', 'Other']
 
 export default function Picks() {
   const { user, profile } = useAuth()
@@ -53,8 +53,8 @@ export default function Picks() {
   async function placeBet(e) {
     e.preventDefault()
     if (!profile?.jcb_card_number) return
-    const amount = parseFloat(betAmount)
-    if (!amount || amount <= 0) return
+    const amount = Math.round(parseFloat(betAmount))
+    if (!amount || amount < 10) return
     setBetting(true)
     setBetMsg(null)
 
@@ -92,7 +92,7 @@ export default function Picks() {
       if (dbErr) {
         setBetMsg({ type: 'error', text: `Charged but failed to record bet — ref: ${chargeData.data?.reference ?? ref}` })
       } else {
-        setBetMsg({ type: 'success', text: `Bet placed! Ɉ${amount.toFixed(2)} charged.` })
+        setBetMsg({ type: 'success', text: `Bet placed! Ɉ${amount} charged.` })
       }
     } catch (err) {
       setBetMsg({ type: 'error', text: 'Failed to reach JCB API.' })
@@ -180,9 +180,9 @@ export default function Picks() {
                   <label className={styles.label}>Amount (Ɉ)</label>
                   <input
                     type="number"
-                    min="1"
-                    step="0.01"
-                    placeholder="25.00"
+                    min="10"
+                    step="1"
+                    placeholder="10"
                     value={betAmount}
                     onChange={e => setBetAmount(e.target.value)}
                     className={styles.input}
@@ -190,10 +190,10 @@ export default function Picks() {
                     required
                   />
                 </div>
-                {parseFloat(betAmount) > 0 && (
+                {parseFloat(betAmount) >= 10 && (
                   <div className={styles.payoutRow}>
                     <span className={styles.payoutLabel}>Potential Win</span>
-                    <span className={styles.payoutVal}>Ɉ{(parseFloat(betAmount) * 2).toFixed(2)}</span>
+                    <span className={styles.payoutVal}>Ɉ{Math.round(parseFloat(betAmount)) * 2}</span>
                   </div>
                 )}
                 {betMsg?.type === 'error' && <p className={styles.betError}>{betMsg.text}</p>}
