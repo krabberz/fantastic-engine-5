@@ -136,7 +136,7 @@ export default function Dashboard() {
         {/* Stats row */}
         <div className={styles.statsRow}>
           <div className={styles.statCard}>
-            <div className={styles.statVal}>{account ? `Ɉ${Number(account.balance).toFixed(2)}` : '—'}</div>
+            <div className={styles.statVal}>{account ? `Ɉ${Math.round(Number(account.balance))}` : '—'}</div>
             <div className={styles.statLabel}>Account Balance</div>
             {account && <div className={styles.statSub}>{account.account_number}</div>}
           </div>
@@ -212,7 +212,7 @@ export default function Dashboard() {
                   ✓ Card verified
                   {cardInfo.owner_name ? ` — ${cardInfo.owner_name}` : ''}
                   {cardInfo.account_number ? ` (${cardInfo.account_number})` : ''}
-                  {cardInfo.balance != null ? ` · Ɉ${Number(cardInfo.balance).toFixed(2)}` : ''}
+                  {cardInfo.balance != null ? ` · Ɉ${Math.round(Number(cardInfo.balance))}` : ''}
                 </p>
               )}
               {cardError && <p className={styles.cardErr}>{cardError}</p>}
@@ -268,8 +268,8 @@ function BetRow({ bet }) {
         <div className={styles.betDate}>{gameTime}</div>
       </div>
       <div className={styles.betRight}>
-        <div className={styles.betAmount}>Ɉ{Number(bet.amount).toFixed(2)}</div>
-        {bet.payout && <div className={styles.betPayout}>+Ɉ{Number(bet.payout).toFixed(2)}</div>}
+        <div className={styles.betAmount}>Ɉ{Math.round(Number(bet.amount))}</div>
+        {bet.payout && <div className={styles.betPayout}>+Ɉ{Math.round(Number(bet.payout))}</div>}
         <div className={`${styles.betResult} ${
           bet.result === 'win' ? styles.win :
           bet.result === 'loss' ? styles.loss :

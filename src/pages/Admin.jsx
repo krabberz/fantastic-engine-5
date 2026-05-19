@@ -115,7 +115,7 @@ export default function Admin() {
     )
     const data = await res.json()
     setSettleLeagueMsg(data.ok
-      ? `Settled! Prize pool: Ɉ${data.prize_pool?.toFixed(2)}`
+      ? `Settled! Prize pool: Ɉ${Math.round(data.prize_pool ?? 0)}`
       : `Error: ${data.error}`)
     setSettlingLeague(null)
     loadLeagues()
@@ -283,11 +283,11 @@ export default function Admin() {
                 <div key={bet.id} className={styles.betRow}>
                   <span className={styles.betUser}>{bet.user_id.slice(0, 8)}…</span>
                   <span>{bet.picks?.matchup ?? '—'}</span>
-                  <span>Ɉ{Number(bet.amount).toFixed(2)}</span>
+                  <span>Ɉ{Math.round(Number(bet.amount))}</span>
                   <span className={`${styles.tag} ${bet.result === 'win' ? styles.win : bet.result === 'loss' ? styles.loss : bet.result === 'push' ? styles.push : styles.pending}`}>
                     {bet.result ?? 'pending'}
                   </span>
-                  <span>{bet.payout ? `Ɉ${Number(bet.payout).toFixed(2)}` : '—'}</span>
+                  <span>{bet.payout ? `Ɉ${Math.round(Number(bet.payout))}` : '—'}</span>
                 </div>
               ))}
             </div>
@@ -369,7 +369,7 @@ export default function Admin() {
                       <div className={styles.leagueInfo}>
                         <div className={styles.leagueName}>{l.name}</div>
                         <div className={styles.leagueMeta}>
-                          {l.entry_count} entries · Ɉ{prizePool.toFixed(2)} pool · Fee Ɉ{l.entry_fee} / Rake Ɉ{l.rake}
+                          {l.entry_count} entries · Ɉ{Math.round(prizePool)} pool · Fee Ɉ{l.entry_fee} / Rake Ɉ{l.rake}
                         </div>
                       </div>
                       <div className={styles.leagueActions}>

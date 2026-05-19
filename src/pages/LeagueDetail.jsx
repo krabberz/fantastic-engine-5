@@ -92,7 +92,7 @@ export default function LeagueDetail() {
       if (dbErr) {
         setJoinMsg({ type: 'error', text: `Charged but entry failed — ref: ${chargeData.data?.reference ?? ref}` })
       } else {
-        setJoinMsg({ type: 'success', text: `Joined! Ɉ${Number(league.entry_fee).toFixed(2)} charged.` })
+        setJoinMsg({ type: 'success', text: `Joined! Ɉ${Math.round(Number(league.entry_fee))} charged.` })
         // Reload entries
         const { data: le } = await supabase
           .from('league_entries')
@@ -113,7 +113,10 @@ export default function LeagueDetail() {
   if (loading) return <><Nav /><div style={{ padding: 120, textAlign: 'center', color: 'var(--grey)', fontFamily: 'Barlow Condensed' }}>Loading...</div><Footer /></>
   if (!league) return <><Nav /><div style={{ padding: 120, textAlign: 'center', color: 'var(--grey)', fontFamily: 'Barlow Condensed' }}>League not found.</div><Footer /></>
 
-  const prizePool = (Number(league.entry_fee) - Number(league.rake)) * Number(league.entry_count)
+  const prizePool = Math.round((Number(league.entry_fee) - Number(league.rake)) * Number(league.entry_count))
+  const splitKey = league.payout_split ?? '40/30/30'
+  const splitRatios = splitKey === '33/33/33' ? [1/3, 1/3, 1/3] : [0.4, 0.3, 0.3]
+  const splitLabels = splitKey === '33/33/33' ? ['33%', '33%', '33%'] : ['40%', '30%', '30%']
   const isOpen = league.status === 'open'
   const canJoin = isOpen && !!user && !myEntry
 
@@ -150,9 +153,9 @@ export default function LeagueDetail() {
           </div>
         </div>
         <div className={styles.splitRow}>
-          <span className={styles.splitItem}><span className="gold">50%</span> 1st — Ɉ{(prizePool * 0.5).toFixed(2)}</span>
-          <span className={styles.splitItem}><span className="gold">30%</span> 2nd — Ɉ{(prizePool * 0.3).toFixed(2)}</span>
-          <span className={styles.splitItem}><span className="gold">20%</span> 3rd — Ɉ{(prizePool * 0.2).toFixed(2)}</span>
+          <span className={styles.splitItem}><span className="gold">{splitLabels[0]}</span> 1st — Ɉ{Math.round(prizePool * splitRatios[0])}</span>
+          <span className={styles.splitItem}><span className="gold">{splitLabels[1]}</span> 2nd — Ɉ{Math.round(prizePool * splitRatios[1])}</span>
+          <span className={styles.splitItem}><span className="gold">{splitLabels[2]}</span> 3rd — Ɉ{Math.round(prizePool * splitRatios[2])}</span>
         </div>
       </header>
 
@@ -217,7 +220,7 @@ export default function LeagueDetail() {
                       <>
                         <div className={styles.joinSummary}>
                           <span>Card: •••• {profile.jcb_card_number.slice(-4)}</span>
-                          <span>Entry: <strong className="gold">Ɉ{Number(league.entry_fee).toFixed(2)}</strong></span>
+                          <span>Entry: <strong className="gold">Ɉ{Math.round(Number(league.entry_fee))}</strong></span>
                         </div>
                         {joinMsg?.type === 'error' && <p className={styles.joinError}>{joinMsg.text}</p>}
                         <button
@@ -226,7 +229,7 @@ export default function LeagueDetail() {
                           disabled={joining || !picks.every(p => predictions[p.id])}
                           style={{ width: '100%' }}
                         >
-                          {joining ? 'Joining...' : `Join League — Ɉ${Number(league.entry_fee).toFixed(2)}`}
+                          {joining ? 'Joining...' : `Join League — Ɉ${Math.round(Number(league.entry_fee))}`}
                         </button>
                       </>
                     )}
@@ -249,7 +252,7 @@ export default function LeagueDetail() {
                   <div className={styles.enteredBadge}>
                     ✓ You're in — {myEntry.score != null ? `Score: ${myEntry.score}/${picks.length}` : 'Awaiting results'}
                     {myEntry.rank && ` · Rank #${myEntry.rank}`}
-                    {myEntry.payout ? ` · Ɉ${Number(myEntry.payout).toFixed(2)} won` : ''}
+                    {myEntry.payout ? ` · Ɉ${Math.round(Number(myEntry.payout))} won` : ''}
                   </div>
                 )}
 
@@ -283,7 +286,7 @@ export default function LeagueDetail() {
                         )}
                       </div>
                       {entry.payout ? (
-                        <div className={styles.standingPayout}>Ɉ{Number(entry.payout).toFixed(2)}</div>
+                        <div className={styles.standingPayout}>Ɉ{Math.round(Number(entry.payout))}</div>
                       ) : null}
                     </div>
                   )
