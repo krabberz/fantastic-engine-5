@@ -12,7 +12,7 @@ export default function Footer() {
         <div>
           <div className={styles.colTitle}>Picks</div>
           <ul className={styles.links}>
-            <li><Link to="/picks">This Week's Picks</Link></li>
+            <li><Link to="/leagues">This Week's Leagues</Link></li>
             <li><Link to="/picks">See All Sports</Link></li>
           </ul>
         </div>
@@ -28,7 +28,7 @@ export default function Footer() {
           <ul className={styles.links}>
             <li><Link to="/login">Sign Up</Link></li>
             <li><Link to="/login">Login</Link></li>
-            <li><Link to="/picks">FAQ &amp; Support</Link></li>
+            <li><Link to="#">FAQ &amp; Support</Link></li>
           </ul>
         </div>
       </footer>
