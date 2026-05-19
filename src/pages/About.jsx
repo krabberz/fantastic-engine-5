@@ -44,14 +44,14 @@ export default function About() {
         <h2 className="section-title">Behind <span className="gold">JPIX</span></h2>
         <div className={styles.teamGrid}>
           <div className={styles.teamCard}>
-            <div className={styles.teamAvatar}>TS</div>
-            <div className={styles.teamRole}>Founder, Chairman &amp; Commissioner</div>
-            <div className={styles.teamName}>Tristan Stubbs</div>
+            <div className={styles.teamAvatar}>MC</div>
+            <div className={styles.teamRole}>Founder</div>
+            <div className={styles.teamName}>Mr. Chef</div>
           </div>
           <div className={styles.teamCard}>
-            <div className={styles.teamAvatar}>JP</div>
+            <div className={styles.teamAvatar}>PM</div>
             <div className={styles.teamRole}>Web Developer</div>
-            <div className={styles.teamName}>JP</div>
+            <div className={styles.teamName}>President Man</div>
           </div>
         </div>
       </section>
