@@ -15,7 +15,7 @@ export default function Nav() {
   return (
     <nav className={styles.nav}>
       <Link to="/" className={styles.logo}>
-        Jollar<span className={styles.logoSlash}> /</span> Picks
+        Jollar<span className={styles.logoSlash}> / </span>Picks
       </Link>
       <ul className={styles.links}>
         <li><Link to="/">Home</Link></li>
