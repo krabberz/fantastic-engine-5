@@ -54,7 +54,7 @@ export default function Picks() {
     e.preventDefault()
     if (!profile?.jcb_card_number) return
     const amount = Math.round(parseFloat(betAmount))
-    if (!amount || amount < 10) return
+    if (!amount || amount < 4) return
     setBetting(true)
     setBetMsg(null)
 
@@ -180,9 +180,9 @@ export default function Picks() {
                   <label className={styles.label}>Amount (Ɉ)</label>
                   <input
                     type="number"
-                    min="10"
+                    min="4"
                     step="1"
-                    placeholder="10"
+                    placeholder="4"
                     value={betAmount}
                     onChange={e => setBetAmount(e.target.value)}
                     className={styles.input}
@@ -190,7 +190,7 @@ export default function Picks() {
                     required
                   />
                 </div>
-                {parseFloat(betAmount) >= 10 && (
+                {parseFloat(betAmount) >= 4 && (
                   <div className={styles.payoutRow}>
                     <span className={styles.payoutLabel}>Potential Win</span>
                     <span className={styles.payoutVal}>Ɉ{Math.round(parseFloat(betAmount)) * 2}</span>

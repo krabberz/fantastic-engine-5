@@ -33,8 +33,8 @@ export default function Admin() {
   // Leagues state
   const [leagues, setLeagues] = useState([])
   const [leaguesLoading, setLeaguesLoading] = useState(false)
-  const LEAGUE_RAKE = 2
-  const [leagueForm, setLeagueForm] = useState({ name: '', description: '', entry_fee: '10', closes_at: '' })
+  const LEAGUE_RAKE = 1
+  const [leagueForm, setLeagueForm] = useState({ name: '', description: '', entry_fee: '10', payout_split: '40/30/30', closes_at: '' })
   const [leaguePickIds, setLeaguePickIds] = useState([])
   const [savingLeague, setSavingLeague] = useState(false)
   const [leagueError, setLeagueError] = useState(null)
@@ -42,7 +42,7 @@ export default function Admin() {
   const [settleLeagueMsg, setSettleLeagueMsg] = useState(null)
 
   useEffect(() => {
-    if (!user || !profile || profile.role !== 'admin') return
+    if (!user || !profile || (profile.role !== 'admin' && profile.role !== 'superadmin')) return
     loadPicks()
   }, [user, profile])
 
@@ -82,12 +82,13 @@ export default function Admin() {
       description: leagueForm.description || null,
       entry_fee: Number(leagueForm.entry_fee),
       rake: LEAGUE_RAKE,
+      payout_split: leagueForm.payout_split,
       closes_at: leagueForm.closes_at ? new Date(leagueForm.closes_at).toISOString() : null,
     }).select().single()
     if (error || !l) { setLeagueError(error?.message ?? 'Failed to create league'); setSavingLeague(false); return }
     await supabase.from('league_picks').insert(leaguePickIds.map(pick_id => ({ league_id: l.id, pick_id })))
     setSavingLeague(false)
-    setLeagueForm({ name: '', description: '', entry_fee: '10', closes_at: '' })
+    setLeagueForm({ name: '', description: '', entry_fee: '10', payout_split: '40/30/30', closes_at: '' })
     setLeaguePickIds([])
     loadLeagues()
   }
@@ -233,7 +234,7 @@ export default function Admin() {
 
       <section className={styles.section}>
         <div className={styles.tabs}>
-          <button className={`${styles.tab} ${tab === 'picks' ? styles.tabActive : ''}`} onClick={() => setTab('picks')}>Picks</button>
+          <button className={`${styles.tab} ${tab === 'picks' ? styles.tabActive : ''}`} onClick={() => { setTab('picks'); loadPicks() }}>Picks</button>
           <button className={`${styles.tab} ${tab === 'bets' ? styles.tabActive : ''}`} onClick={() => { setTab('bets'); if (!allBets.length) loadBets() }}>All Bets</button>
           <button className={`${styles.tab} ${tab === 'leagues' ? styles.tabActive : ''}`} onClick={() => { setTab('leagues'); if (!leagues.length) loadLeagues() }}>Leagues</button>
         </div>
@@ -317,6 +318,13 @@ export default function Admin() {
                   <div className={styles.field}>
                     <label className={styles.label}>Rake (fixed)</label>
                     <div className={styles.input} style={{ display: 'flex', alignItems: 'center', opacity: 0.6, cursor: 'default' }}>Ɉ{LEAGUE_RAKE} per entry</div>
+                  </div>
+                  <div className={styles.field}>
+                    <label className={styles.label}>Payout Split</label>
+                    <select value={leagueForm.payout_split} onChange={e => setLeagueForm(f => ({ ...f, payout_split: e.target.value }))} className={styles.input}>
+                      <option value="40/30/30">40 / 30 / 30</option>
+                      <option value="33/33/33">33 / 33 / 33</option>
+                    </select>
                   </div>
                   <div className={styles.field}>
                     <label className={styles.label}>Closes At</label>

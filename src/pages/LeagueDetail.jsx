@@ -69,7 +69,7 @@ export default function LeagueDetail() {
         body: JSON.stringify({
           card_number: profile.jcb_card_number,
           amount: Number(league.entry_fee),
-          transaction_type: 'gambling_loss',
+          transaction_type: 'purchase',
           description: `Jollar Picks — ${league.name} league entry`,
           reference: ref,
           metadata: { league_id: id, user_id: user.id },

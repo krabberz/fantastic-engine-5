@@ -71,7 +71,10 @@ Deno.serve(async (req) => {
 
     // Prize pool = (entry_fee - rake) * entry_count
     const prizePool = (Number(league.entry_fee) - Number(league.rake)) * Number(league.entry_count)
-    const splits = [0.5, 0.3, 0.2]
+    const splitKey = league.payout_split ?? '40/30/30'
+    const splits = splitKey === '33/33/33'
+      ? [1/3, 1/3, 1/3]
+      : [0.4, 0.3, 0.3]
 
     const results = []
 
