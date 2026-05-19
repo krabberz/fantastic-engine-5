@@ -53,15 +53,17 @@ Deno.serve(async (req) => {
     }
 
     // Score each entry
-    const pickResultMap: Record<string, string> = {}
+    // Predictions store 'team1' | 'team2' | 'tie'; map pick result → expected value
+    const pickWinnerMap: Record<string, string> = {}
     for (const lp of leaguePicks as any[]) {
-      pickResultMap[lp.pick_id] = lp.picks.result
+      const result = lp.picks.result
+      pickWinnerMap[lp.pick_id] = result === 'win' ? 'team1' : result === 'loss' ? 'team2' : 'tie'
     }
 
     const scored = entries.map((entry: any) => {
       let score = 0
       for (const [pick_id, predicted] of Object.entries(entry.predictions as Record<string, string>)) {
-        if (pickResultMap[pick_id] && pickResultMap[pick_id] === predicted) score++
+        if (pickWinnerMap[pick_id] && pickWinnerMap[pick_id] === predicted) score++
       }
       return { ...entry, score }
     })

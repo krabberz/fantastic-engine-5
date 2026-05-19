@@ -172,9 +172,16 @@ export default function LeagueDetail() {
                 <div className={styles.pickList}>
                   {picks.map(pick => {
                     const gameTime = new Date(pick.game_time).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+                    const [t1, t2] = (pick.teams || '').split(/\s+vs\.?\s+/i).map(t => t.trim())
+                    const TIE_SPORTS = ['Soccer', 'EPL', 'MLS', 'Bundesliga', 'NCAAF']
+                    const hasTie = TIE_SPORTS.includes(pick.sport)
+                    const outcomes = [
+                      { value: 'team1', label: t1 || 'Team 1' },
+                      { value: 'team2', label: t2 || 'Team 2' },
+                      ...(hasTie ? [{ value: 'tie', label: 'Draw' }] : []),
+                    ]
+                    const correctVal = pick.result === 'win' ? 'team1' : pick.result === 'loss' ? 'team2' : pick.result === 'push' ? 'tie' : null
                     const chosen = myEntry ? myEntry.predictions[pick.id] : predictions[pick.id]
-                    const correct = myEntry && pick.result && myEntry.predictions[pick.id] === pick.result
-                    const wrong = myEntry && pick.result && myEntry.predictions[pick.id] !== pick.result
 
                     return (
                       <div key={pick.id} className={styles.pickRow}>
@@ -184,23 +191,23 @@ export default function LeagueDetail() {
                           <div className={styles.pickSub}>{pick.teams} · {gameTime}</div>
                         </div>
                         <div className={styles.pickOutcomes}>
-                          {['win', 'loss', 'push'].map(outcome => {
-                            const isChosen = chosen === outcome
-                            const isResult = pick.result === outcome
+                          {outcomes.map(({ value, label }) => {
+                            const isChosen = chosen === value
+                            const isCorrect = correctVal === value
                             return (
                               <button
-                                key={outcome}
+                                key={value}
                                 type="button"
                                 disabled={!canJoin}
-                                onClick={() => canJoin && predict(pick.id, outcome)}
+                                onClick={() => canJoin && predict(pick.id, value)}
                                 className={`${styles.outcomeBtn}
                                   ${isChosen && !myEntry ? styles.outcomePicked : ''}
-                                  ${myEntry && isChosen && correct ? styles.outcomeCorrect : ''}
-                                  ${myEntry && isChosen && wrong ? styles.outcomeWrong : ''}
-                                  ${myEntry && isResult && !isChosen ? styles.outcomeResult : ''}
+                                  ${myEntry && isChosen && isCorrect ? styles.outcomeCorrect : ''}
+                                  ${myEntry && isChosen && !isCorrect && correctVal ? styles.outcomeWrong : ''}
+                                  ${myEntry && isCorrect && !isChosen ? styles.outcomeResult : ''}
                                 `}
                               >
-                                {outcome.toUpperCase()}
+                                {label}
                               </button>
                             )
                           })}
