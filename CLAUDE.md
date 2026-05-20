@@ -1,6 +1,6 @@
 # CLAUDE.md — Jollar Picks (fantastic-engine-5)
 
-Sports betting / predictions platform for Jollarians. Users bet Jollars on sports picks. Built with React + Vite. Part of the Jollarian Federation ecosystem.
+Sports betting / pick'em league platform for Jollarians. Users bet Jollars on sports picks and enter pick'em leagues. Built with React + Vite. Part of the Jollarian Federation ecosystem.
 
 ---
 
@@ -8,8 +8,9 @@ Sports betting / predictions platform for Jollarians. Users bet Jollars on sport
 
 - **Framework:** React 18 + Vite
 - **Routing:** React Router v6
-- **Auth & DB:** Supabase (`@supabase/supabase-js`)
+- **Auth & DB:** Supabase i-pick project (`veskcncrtjngnuxnglxg`)
 - **Styling:** CSS Modules + global CSS variables
+- **Payments:** JCB API (`https://jcb.jollaria.org`) — called directly from client
 - **Dev:** `npm run dev` (port 5173)
 
 ---
@@ -18,82 +19,165 @@ Sports betting / predictions platform for Jollarians. Users bet Jollars on sport
 
 ```
 src/
-  pages/          — Home, About, Picks, Dashboard, Auth
-  components/     — Nav, Footer (shared across all pages)
-  context/        — AuthContext (login state, profile, bank account)
+  pages/
+    Home, About, Picks, Leagues, LeagueDetail,
+    Dashboard, Auth, Signup, ResetPassword, Admin
+  components/     — Nav, Footer
+  context/        — AuthContext (user, profile, account balance)
   lib/
-    supabase.js   — Two Supabase clients (supabaseAuth + supabaseIpick)
-    jcb.js        — JCB API helpers (validateCard, chargeCard, getAccount)
+    supabase.js   — Supabase client (anon key)
   styles/
-    globals.css   — CSS variables, shared styles, animations
+    globals.css   — CSS variables, shared styles
+supabase/
+  functions/
+    payout-win/   — Pay out winning bets via JCB account transfer
+    settle-league/ — Score and settle a league, pay top finishers
+  migrations/     — SQL migrations (apply in Supabase SQL editor)
 ```
 
 ---
 
-## Databases
+## Environment variables (`.env`)
 
-### Jollarian Federation (`uazisatrosbxanporzwm`)
-Used for **auth only**. Login with Jollarian Federation email/password via `supabaseAuth`.
+```
+VITE_IPICK_URL=https://veskcncrtjngnuxnglxg.supabase.co
+VITE_IPICK_KEY=sb_publishable_K0R7FI1IkbGhFyJJ1k8X_A_szGSA2JU   # safe to expose (publishable)
+VITE_JCB_URL=https://jcb.jollaria.org
+VITE_JCB_KEY=<jpix jcb api key>   # client-exposed, accepted risk
+VITE_JPIX_JCB_ACCOUNT=JCB-1123383096
+```
 
-Key tables read:
-- `profiles` — `full_name`, `display_name`, `email`, `role`
-- `bank_accounts` — `account_number`, `balance`, `account_type`, `is_frozen`
+---
 
-### i pick (`veskcncrtjngnuxnglxg`)
-Used for **picks and bets data** via `supabaseIpick`.
+## JCB API (called directly from React client)
 
-Expected schema (create these if they don't exist):
+**Base URL:** `VITE_JCB_URL`
+**Auth:** `Authorization: Bearer VITE_JCB_KEY`
+**JPIX account:** `VITE_JPIX_JCB_ACCOUNT` = `JCB-1123383096`
 
+CORS is `*` — direct browser calls work.
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /api/v1/cards/validate` | Validate card; returns `{ ok, data: { valid, account_number, ... } }` |
+| `POST /api/v1/cards/charge` | Charge card; `transaction_type: 'purchase'` for bets/entry fees |
+| `POST /api/v1/accounts/{account_number}` | Fetch balance/owner info |
+| `POST /api/v1/transactions` | Account-to-account transfer (used by Edge Functions for payouts) |
+
+**`safeJson` helper** — always check `content-type: application/json` before `.json()`; HTML responses mean an undefined URL hit the SPA.
+
+---
+
+## Database (i-pick: `veskcncrtjngnuxnglxg`)
+
+### `picks`
 ```sql
-create table picks (
-  id uuid primary key default gen_random_uuid(),
-  sport text not null,
-  matchup text not null,       -- e.g. "Spurs -205"
-  teams text not null,          -- e.g. "San Antonio vs Minnesota"
-  odds text,                    -- e.g. "-205"
-  game_time timestamptz not null,
-  confidence int not null,      -- 0-100
-  is_hot bool default false,
-  result text,                  -- null | 'win' | 'loss' | 'push'
-  created_at timestamptz default now()
-);
+id, sport, matchup, teams,
+team1, team1_odds,           -- individual team name + moneyline (e.g. "-205")
+team2, team2_odds,           -- second team + moneyline
+spread,                      -- over/under line (text, e.g. "224.5")
+odds,                        -- legacy: = team1_odds
+game_time, confidence, is_hot,
+result,                      -- null | 'win' | 'loss' | 'push'
+created_at
+```
 
-create table user_bets (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null,        -- Jollarian Federation user ID
-  pick_id uuid references picks(id),
-  amount numeric not null,
-  jcb_transaction_ref text,     -- JCB reference from charge response
-  result text,                  -- null | 'win' | 'loss' | 'push'
-  payout numeric,
-  created_at timestamptz default now()
-);
+`matchup` and `teams` are auto-generated from `team1 vs team2` when saving via Admin.
+
+### `user_bets`
+```sql
+id, user_id, pick_id, amount, jcb_transaction_ref,
+result, payout, created_at
+```
+Minimum bet: **Ɉ4**. Amounts are whole Jollars only (`Math.round()`).
+
+### `leagues`
+```sql
+id, name, description,
+entry_fee,                   -- minimum Ɉ10
+rake,                        -- fixed Ɉ1 per entry
+payout_split,                -- '40/30/30' | '33/33/33' | custom e.g. '35/25/25/15'
+entry_count, pot_total,      -- maintained by DB trigger
+status,                      -- 'open' | 'locked' | 'settled'
+closes_at, settled_at, created_at
+```
+
+`payout_split` can have 3 or 4 parts. Each part is a whole-number percentage. Parts can sum to < 100 (house keeps remainder).
+
+### `league_entries`
+```sql
+id, league_id, user_id,
+predictions,                 -- JSONB: { [pick_id]: 'team1' | 'team2' | 'tie' }
+score, rank, payout,
+jcb_transaction_ref, created_at
+```
+
+### `league_picks`
+```sql
+league_id, pick_id
 ```
 
 ---
 
-## JCB API
+## Pick'em League system
 
-**Base URL:** `https://jcb.jollaria.org`
-**Key prefix:** `jcb_live_407fd5e` (Jollar Picks key, permissions: accounts:read, cards:read, cards:charge, transactions:read/write/reverse)
-
-The full API key goes in `.env` as `VITE_JCB_API_KEY`. Never commit the actual key.
-
----
-
-## Auth flow
-
-1. User logs in at `/login` with Jollarian Federation credentials
-2. `AuthContext` calls `supabaseAuth.auth.signInWithPassword`
-3. On success, loads their `profiles` row and `bank_accounts` (checking) from the Federation DB
-4. All pages that need auth check `user` from `useAuth()` — Dashboard redirects to `/login` if not logged in
-5. New users must apply at the National Bank of Jollaria first (Google Form link on login page)
+- Admin creates a league, selects pending picks, sets entry fee (min Ɉ10), payout split
+- Rake is **Ɉ1 fixed** per entry; prize pool = `(entry_fee - 1) × entry_count`
+- Users predict which team wins each pick (`team1` | `team2` | `tie` for applicable sports)
+- Tie/Draw shown for: Soccer, EPL, MLS, Bundesliga, NCAAF
+- After all picks are settled, admin locks → settles league via `settle-league` Edge Function
+- **Payout split** editable on locked leagues before settling
+- Top N finishers (N = number of split parts) paid via JCB account transfer to card's linked account
+- Scoring: `win` result → `team1` correct; `loss` → `team2` correct; `push` → `tie` correct
 
 ---
 
-## Currency display
+## Betting (individual picks)
 
-Always format as `Ɉ{amount}` (e.g. `Ɉ25.00`). Use `J` as ASCII fallback in plain text contexts.
+- Min Ɉ4, whole Jollars only
+- Charge: `POST /api/v1/cards/charge` with `transaction_type: 'purchase'`
+- Win payout: `payout-win` Edge Function → `POST /api/v1/transactions` (JPIX → winner account)
+- Multiplier: 2× bet amount
+
+---
+
+## Edge Functions
+
+Both deployed with `--no-verify-jwt` (publishable key is not a JWT).
+
+| Function | Trigger | Notes |
+|----------|---------|-------|
+| `payout-win` | Admin settles pick as 'win' | Pays all bettors 2× via account transfer |
+| `settle-league` | Admin settles locked league | Scores entries, pays top N finishers |
+
+**Secrets required:**
+```
+JCB_API_URL, JCB_API_KEY, JPIX_JCB_ACCOUNT
+SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY  (auto-injected)
+```
+
+Deploy:
+```bash
+npx supabase functions deploy payout-win --project-ref veskcncrtjngnuxnglxg --no-verify-jwt
+npx supabase functions deploy settle-league --project-ref veskcncrtjngnuxnglxg --no-verify-jwt
+```
+
+---
+
+## Currency
+
+All amounts are **whole Jollars** — always use `Math.round()`. Display as `Ɉ{amount}` (no decimals). ASCII fallback: `J`.
+
+---
+
+## Auth
+
+- Single Supabase project for both auth and DB (`veskcncrtjngnuxnglxg`)
+- Admin roles: `admin` or `superadmin` — both access the Admin page
+- Payment methods (JCB card) added in Dashboard, not at signup
+- Card validation: `POST /api/v1/cards/validate` → save `jcb_card_number` + `jcb_account_number` to `profiles`
+
+---
 
 ## Design system
 
@@ -102,40 +186,14 @@ Gold/black theme. CSS variables in `globals.css`:
 - `--black` `#080808` through `--black-4` `#1E1E1E`
 - `--white` `#F5F0E8`, `--grey` `#888880`
 - Fonts: **Bebas Neue** (headings), **Barlow Condensed** (labels/UI), **Barlow** (body)
-- Buttons use `clip-path: polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%)` for the angled look
+- Buttons: `clip-path: polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%)`
 
-## Edge Functions (Supabase)
+---
 
-JCB API key must never be in client-side code. All JCB calls go through Edge Functions:
+## DB migrations
 
-| Function | Purpose |
-|----------|---------|
-| `place-bet` | Validate card → charge via JCB → record bet in DB |
-| `payout-win` | Pay out all winning bets for a pick via `gambling_win` transaction |
+Apply SQL files in `supabase/migrations/` via **Supabase Dashboard → project veskcncrtjngnuxnglxg → SQL Editor**.
 
-**Deploy:**
-```bash
-supabase functions deploy place-bet --project-ref veskcncrtjngnuxnglxg
-supabase functions deploy payout-win --project-ref veskcncrtjngnuxnglxg
-```
-
-**Required Edge Function secrets** (set in Supabase dashboard → Edge Functions → Secrets):
-```
-JCB_API_URL=https://jcb.jollaria.org
-JCB_API_KEY=jcb_live_407fd5e89b224d43aee57fd5ec5bbc7cdd8e9675731940af959c2b15e7eeb31b
-JPIX_JCB_ACCOUNT=<Jollar Picks partner JCB account number>
-JOLLARIA_URL=https://uazisatrosbxanporzwm.supabase.co
-JOLLARIA_SERVICE_KEY=<Jollarian Federation service role key>
-```
-
-## Database Setup
-
-Run `supabase/migrations/20260515_init.sql` in the i-pick Supabase SQL editor:
-**supabase.com → project veskcncrtjngnuxnglxg → SQL Editor → paste → Run**
-
-## Notes
-
-- `.env` is gitignored — never commit it. See `.env.example` for required vars.
-- JCB API key (`JCB_API_KEY` in `.env`) is NOT prefixed with `VITE_` — it must stay server-side only.
-- The i-pick DB MCP server is configured in `.mcp.json` but requires authentication via `/mcp` in a Claude Code session opened from this directory.
-- Betting flow: `place-bet` edge function → `gambling_loss` charge → win? → `payout-win` edge function → `gambling_win` transaction → loser bets need no action (charge already recorded).
+Latest pending:
+- `20260518_leagues_payout_split.sql` — adds `payout_split` to leagues
+- `20260519_picks_team_fields.sql` — adds `team1`, `team1_odds`, `team2`, `team2_odds`, `spread` to picks
