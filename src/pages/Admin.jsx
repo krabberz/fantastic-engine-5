@@ -8,7 +8,7 @@ import styles from './Admin.module.css'
 
 const SPORTS = ['NBA', 'NFL', 'MLB', 'NHL', 'Soccer', 'NCAAF', 'NCAAB', 'Bundesliga', 'EPL', 'MLS', 'Other']
 
-const BLANK_PICK = { sport: 'NBA', matchup: '', teams: '', odds: '', game_time: '', confidence: 70, is_hot: false }
+const BLANK_PICK = { sport: 'NBA', team1: '', team1_odds: '', team2: '', team2_odds: '', spread: '', game_time: '', confidence: 70, is_hot: false }
 
 export default function Admin() {
   const { user, profile, loading } = useAuth()
@@ -34,12 +34,13 @@ export default function Admin() {
   const [leagues, setLeagues] = useState([])
   const [leaguesLoading, setLeaguesLoading] = useState(false)
   const LEAGUE_RAKE = 1
-  const [leagueForm, setLeagueForm] = useState({ name: '', description: '', entry_fee: '10', payout_split: '40/30/30', closes_at: '' })
+  const [leagueForm, setLeagueForm] = useState({ name: '', description: '', entry_fee: '10', payout_split: '40/30/30', custom_parts: ['35', '25', '25', '15'], closes_at: '' })
   const [leaguePickIds, setLeaguePickIds] = useState([])
   const [savingLeague, setSavingLeague] = useState(false)
   const [leagueError, setLeagueError] = useState(null)
   const [settlingLeague, setSettlingLeague] = useState(null)
   const [settleLeagueMsg, setSettleLeagueMsg] = useState(null)
+  const [editSplit, setEditSplit] = useState(null)
 
   useEffect(() => {
     if (!user || !profile || (profile.role !== 'admin' && profile.role !== 'superadmin')) return
@@ -76,20 +77,41 @@ export default function Admin() {
     setLeagueError(null)
     if (!leagueForm.name) { setLeagueError('Name is required.'); return }
     if (leaguePickIds.length === 0) { setLeagueError('Select at least one pick.'); return }
+    const payout_split = leagueForm.payout_split === 'custom'
+      ? leagueForm.custom_parts.filter(p => p && Number(p) > 0).join('/')
+      : leagueForm.payout_split
     setSavingLeague(true)
     const { data: l, error } = await supabase.from('leagues').insert({
       name: leagueForm.name,
       description: leagueForm.description || null,
       entry_fee: Number(leagueForm.entry_fee),
       rake: LEAGUE_RAKE,
-      payout_split: leagueForm.payout_split,
+      payout_split,
       closes_at: leagueForm.closes_at ? new Date(leagueForm.closes_at).toISOString() : null,
     }).select().single()
     if (error || !l) { setLeagueError(error?.message ?? 'Failed to create league'); setSavingLeague(false); return }
     await supabase.from('league_picks').insert(leaguePickIds.map(pick_id => ({ league_id: l.id, pick_id })))
     setSavingLeague(false)
-    setLeagueForm({ name: '', description: '', entry_fee: '10', payout_split: '40/30/30', closes_at: '' })
+    setLeagueForm({ name: '', description: '', entry_fee: '10', payout_split: '40/30/30', custom_parts: ['35', '25', '25', '15'], closes_at: '' })
     setLeaguePickIds([])
+    loadLeagues()
+  }
+
+  async function deleteLeague(id, name) {
+    if (!confirm(`Delete league "${name}"? This cannot be undone.`)) return
+    await supabase.from('league_picks').delete().eq('league_id', id)
+    await supabase.from('league_entries').delete().eq('league_id', id)
+    await supabase.from('leagues').delete().eq('id', id)
+    loadLeagues()
+  }
+
+  async function saveLeagueSplit(id) {
+    const es = editSplit
+    const split = es.value === 'custom'
+      ? es.parts.filter(p => p && Number(p) > 0).join('/')
+      : es.value
+    await supabase.from('leagues').update({ payout_split: split }).eq('id', id)
+    setEditSplit(null)
     loadLeagues()
   }
 
@@ -130,11 +152,14 @@ export default function Admin() {
 
   function openEdit(pick) {
     setEditPick(pick)
+    const [t1 = '', t2 = ''] = (pick.teams || '').split(/\s+vs\.?\s+/i).map(t => t.trim())
     setForm({
       sport: pick.sport,
-      matchup: pick.matchup,
-      teams: pick.teams,
-      odds: pick.odds ?? '',
+      team1: pick.team1 || t1,
+      team1_odds: pick.team1_odds ?? '',
+      team2: pick.team2 || t2,
+      team2_odds: pick.team2_odds ?? '',
+      spread: pick.spread ?? '',
       game_time: pick.game_time ? pick.game_time.slice(0, 16) : '',
       confidence: pick.confidence,
       is_hot: pick.is_hot ?? false,
@@ -150,16 +175,22 @@ export default function Admin() {
   async function savePick(e) {
     e.preventDefault()
     setFormError(null)
-    if (!form.matchup || !form.teams || !form.game_time) {
-      setFormError('Matchup, teams, and game time are required.')
+    if (!form.team1 || !form.team2 || !form.game_time) {
+      setFormError('Team 1, Team 2, and game time are required.')
       return
     }
     setSaving(true)
+    const teams = `${form.team1} vs ${form.team2}`
     const payload = {
       sport: form.sport,
-      matchup: form.matchup,
-      teams: form.teams,
-      odds: form.odds || null,
+      matchup: teams,
+      teams,
+      team1: form.team1,
+      team1_odds: form.team1_odds || null,
+      team2: form.team2,
+      team2_odds: form.team2_odds || null,
+      spread: form.spread || null,
+      odds: form.team1_odds || null,
       game_time: new Date(form.game_time).toISOString(),
       confidence: Number(form.confidence),
       is_hot: form.is_hot,
@@ -324,8 +355,21 @@ export default function Admin() {
                     <select value={leagueForm.payout_split} onChange={e => setLeagueForm(f => ({ ...f, payout_split: e.target.value }))} className={styles.input}>
                       <option value="40/30/30">40 / 30 / 30</option>
                       <option value="33/33/33">33 / 33 / 33</option>
+                      <option value="custom">Custom</option>
                     </select>
                   </div>
+                  {leagueForm.payout_split === 'custom' && (
+                    <div className={styles.field}>
+                      <label className={styles.label}>Custom % (1st / 2nd / 3rd / 4th)</label>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {leagueForm.custom_parts.map((p, i) => (
+                          <input key={i} type="number" min="0" max="100" placeholder={['1st','2nd','3rd','4th'][i]} value={p}
+                            onChange={e => setLeagueForm(f => { const cp = [...f.custom_parts]; cp[i] = e.target.value; return { ...f, custom_parts: cp } })}
+                            className={styles.input} style={{ width: 64 }} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className={styles.field}>
                     <label className={styles.label}>Closes At</label>
                     <input type="datetime-local" value={leagueForm.closes_at} onChange={e => setLeagueForm(f => ({ ...f, closes_at: e.target.value }))} className={styles.input} />
@@ -364,13 +408,37 @@ export default function Admin() {
               <div className={styles.leagueList}>
                 {leagues.map(l => {
                   const prizePool = (Number(l.entry_fee) - Number(l.rake)) * Number(l.entry_count)
+                  const isEditingSplit = editSplit?.id === l.id
                   return (
                     <div key={l.id} className={styles.leagueRow}>
                       <div className={styles.leagueInfo}>
                         <div className={styles.leagueName}>{l.name}</div>
                         <div className={styles.leagueMeta}>
-                          {l.entry_count} entries · Ɉ{Math.round(prizePool)} pool · Fee Ɉ{l.entry_fee} / Rake Ɉ{l.rake}
+                          {l.entry_count} entries · Ɉ{Math.round(prizePool)} pool · Split: {l.payout_split ?? '40/30/30'} · Fee Ɉ{l.entry_fee}
                         </div>
+                        {l.status === 'locked' && (
+                          isEditingSplit ? (
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+                              <select value={editSplit.value} onChange={e => setEditSplit(s => ({ ...s, value: e.target.value }))} className={styles.input} style={{ width: 'auto' }}>
+                                <option value="40/30/30">40 / 30 / 30</option>
+                                <option value="33/33/33">33 / 33 / 33</option>
+                                <option value="custom">Custom</option>
+                              </select>
+                              {editSplit.value === 'custom' && editSplit.parts.map((p, i) => (
+                                <input key={i} type="number" min="0" max="100" value={p} placeholder={['1st','2nd','3rd','4th'][i]}
+                                  onChange={e => setEditSplit(s => { const pts = [...s.parts]; pts[i] = e.target.value; return { ...s, parts: pts } })}
+                                  className={styles.input} style={{ width: 56 }} />
+                              ))}
+                              <button className="btn-primary" style={{ padding: '4px 12px', fontSize: 13 }} onClick={() => saveLeagueSplit(l.id)}>Save</button>
+                              <button className={styles.cancelBtn} style={{ padding: '4px 12px', fontSize: 13 }} onClick={() => setEditSplit(null)}>Cancel</button>
+                            </div>
+                          ) : (
+                            <button className={styles.cancelBtn} style={{ marginTop: 6, fontSize: 12, padding: '2px 10px' }}
+                              onClick={() => setEditSplit({ id: l.id, value: l.payout_split ?? '40/30/30', parts: ['35','25','25','15'] })}>
+                              Edit Split
+                            </button>
+                          )
+                        )}
                       </div>
                       <div className={styles.leagueActions}>
                         <span className={`${styles.tag} ${l.status === 'open' ? styles.pending : l.status === 'settled' ? styles.win : styles.push}`}>
@@ -380,14 +448,11 @@ export default function Admin() {
                           <button className={styles.settleBtn} onClick={() => lockLeague(l.id)}>Lock</button>
                         )}
                         {l.status === 'locked' && (
-                          <button
-                            className={`${styles.settleBtn}`}
-                            disabled={settlingLeague === l.id}
-                            onClick={() => settleLeague(l)}
-                          >
+                          <button className={styles.settleBtn} disabled={settlingLeague === l.id} onClick={() => settleLeague(l)}>
                             {settlingLeague === l.id ? '...' : 'Settle'}
                           </button>
                         )}
+                        <button className={styles.deleteBtn} onClick={() => deleteLeague(l.id, l.name)}>Delete</button>
                       </div>
                     </div>
                   )
@@ -412,22 +477,34 @@ export default function Admin() {
                   </select>
                 </div>
                 <div className={styles.field}>
-                  <label className={styles.label}>Odds</label>
-                  <input type="text" placeholder="-205" value={form.odds} onChange={setF('odds')} className={styles.input} />
+                  <label className={styles.label}>Game Time</label>
+                  <input type="datetime-local" value={form.game_time} onChange={setF('game_time')} className={styles.input} required />
                 </div>
-              </div>
-              <div className={styles.field}>
-                <label className={styles.label}>Matchup</label>
-                <input type="text" placeholder="Spurs -205" value={form.matchup} onChange={setF('matchup')} className={styles.input} required />
-              </div>
-              <div className={styles.field}>
-                <label className={styles.label}>Teams</label>
-                <input type="text" placeholder="San Antonio vs Minnesota" value={form.teams} onChange={setF('teams')} className={styles.input} required />
               </div>
               <div className={styles.row}>
                 <div className={styles.field}>
-                  <label className={styles.label}>Game Time</label>
-                  <input type="datetime-local" value={form.game_time} onChange={setF('game_time')} className={styles.input} required />
+                  <label className={styles.label}>Team 1</label>
+                  <input type="text" placeholder="San Antonio Spurs" value={form.team1} onChange={setF('team1')} className={styles.input} required />
+                </div>
+                <div className={styles.field}>
+                  <label className={styles.label}>Team 1 Moneyline</label>
+                  <input type="text" placeholder="-205" value={form.team1_odds} onChange={setF('team1_odds')} className={styles.input} />
+                </div>
+              </div>
+              <div className={styles.row}>
+                <div className={styles.field}>
+                  <label className={styles.label}>Team 2</label>
+                  <input type="text" placeholder="Minnesota Timberwolves" value={form.team2} onChange={setF('team2')} className={styles.input} required />
+                </div>
+                <div className={styles.field}>
+                  <label className={styles.label}>Team 2 Moneyline</label>
+                  <input type="text" placeholder="+175" value={form.team2_odds} onChange={setF('team2_odds')} className={styles.input} />
+                </div>
+              </div>
+              <div className={styles.row}>
+                <div className={styles.field}>
+                  <label className={styles.label}>Over/Under</label>
+                  <input type="text" placeholder="224.5" value={form.spread} onChange={setF('spread')} className={styles.input} />
                 </div>
                 <div className={styles.field}>
                   <label className={styles.label}>Confidence — {form.confidence}%</label>

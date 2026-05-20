@@ -135,6 +135,9 @@
 }
 .outcomeBtn:hover:not(:disabled) { border-color: rgba(201,168,76,0.4); color: var(--gold-light); }
 .outcomeBtn:disabled { cursor: default; }
+.outcomeBtn { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.oddsChip { font-size: 10px; color: var(--gold); opacity: 0.8; letter-spacing: 0; text-transform: none; font-family: 'Barlow Condensed', sans-serif; }
+.pickSpread { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; color: rgba(245,240,232,0.4); letter-spacing: 1px; text-transform: uppercase; margin-top: 8px; text-align: right; }
 
 .outcomePicked {
   background: rgba(201,168,76,0.15);

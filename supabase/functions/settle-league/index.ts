@@ -72,18 +72,18 @@ Deno.serve(async (req) => {
     scored.sort((a: any, b: any) => b.score - a.score || new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
 
     // Prize pool = (entry_fee - rake) * entry_count
-    const prizePool = (Number(league.entry_fee) - Number(league.rake)) * Number(league.entry_count)
+    const prizePool = Math.round((Number(league.entry_fee) - Number(league.rake)) * Number(league.entry_count))
     const splitKey = league.payout_split ?? '40/30/30'
     const splits = splitKey === '33/33/33'
       ? [1/3, 1/3, 1/3]
-      : [0.4, 0.3, 0.3]
+      : splitKey.split('/').map((p: string) => Number(p) / 100)
 
     const results = []
 
     for (let i = 0; i < scored.length; i++) {
       const entry = scored[i]
       const rank = i + 1
-      const payoutAmount = rank <= 3 ? Math.round(prizePool * splits[i]) : 0
+      const payoutAmount = i < splits.length ? Math.round(prizePool * splits[i]) : 0
 
       if (payoutAmount > 0) {
         const { data: profile } = await db

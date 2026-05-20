@@ -115,8 +115,9 @@ export default function LeagueDetail() {
 
   const prizePool = Math.round((Number(league.entry_fee) - Number(league.rake)) * Number(league.entry_count))
   const splitKey = league.payout_split ?? '40/30/30'
-  const splitRatios = splitKey === '33/33/33' ? [1/3, 1/3, 1/3] : [0.4, 0.3, 0.3]
-  const splitLabels = splitKey === '33/33/33' ? ['33%', '33%', '33%'] : ['40%', '30%', '30%']
+  const splitRatios = splitKey === '33/33/33' ? [1/3, 1/3, 1/3] : splitKey.split('/').map(p => Number(p) / 100)
+  const splitLabels = splitKey === '33/33/33' ? splitRatios.map(() => '33%') : splitKey.split('/').map(p => `${p}%`)
+  const ordinals = ['1st', '2nd', '3rd', '4th']
   const isOpen = league.status === 'open'
   const canJoin = isOpen && !!user && !myEntry
 
@@ -153,9 +154,11 @@ export default function LeagueDetail() {
           </div>
         </div>
         <div className={styles.splitRow}>
-          <span className={styles.splitItem}><span className="gold">{splitLabels[0]}</span> 1st — Ɉ{Math.round(prizePool * splitRatios[0])}</span>
-          <span className={styles.splitItem}><span className="gold">{splitLabels[1]}</span> 2nd — Ɉ{Math.round(prizePool * splitRatios[1])}</span>
-          <span className={styles.splitItem}><span className="gold">{splitLabels[2]}</span> 3rd — Ɉ{Math.round(prizePool * splitRatios[2])}</span>
+          {splitRatios.map((ratio, i) => (
+            <span key={i} className={styles.splitItem}>
+              <span className="gold">{splitLabels[i]}</span> {ordinals[i]} — Ɉ{Math.round(prizePool * ratio)}
+            </span>
+          ))}
         </div>
       </header>
 
@@ -176,9 +179,9 @@ export default function LeagueDetail() {
                     const TIE_SPORTS = ['Soccer', 'EPL', 'MLS', 'Bundesliga', 'NCAAF']
                     const hasTie = TIE_SPORTS.includes(pick.sport)
                     const outcomes = [
-                      { value: 'team1', label: t1 || 'Team 1' },
-                      { value: 'team2', label: t2 || 'Team 2' },
-                      ...(hasTie ? [{ value: 'tie', label: 'Draw' }] : []),
+                      { value: 'team1', label: pick.team1 || t1 || 'Team 1', odds: pick.team1_odds },
+                      { value: 'team2', label: pick.team2 || t2 || 'Team 2', odds: pick.team2_odds },
+                      ...(hasTie ? [{ value: 'tie', label: 'Draw', odds: null }] : []),
                     ]
                     const correctVal = pick.result === 'win' ? 'team1' : pick.result === 'loss' ? 'team2' : pick.result === 'push' ? 'tie' : null
                     const chosen = myEntry ? myEntry.predictions[pick.id] : predictions[pick.id]
@@ -191,7 +194,7 @@ export default function LeagueDetail() {
                           <div className={styles.pickSub}>{pick.teams} · {gameTime}</div>
                         </div>
                         <div className={styles.pickOutcomes}>
-                          {outcomes.map(({ value, label }) => {
+                          {outcomes.map(({ value, label, odds }) => {
                             const isChosen = chosen === value
                             const isCorrect = correctVal === value
                             return (
@@ -207,11 +210,13 @@ export default function LeagueDetail() {
                                   ${myEntry && isCorrect && !isChosen ? styles.outcomeResult : ''}
                                 `}
                               >
-                                {label}
+                                <span>{label}</span>
+                                {odds && <span className={styles.oddsChip}>{odds}</span>}
                               </button>
                             )
                           })}
                         </div>
+                        {pick.spread && <div className={styles.pickSpread}>O/U {pick.spread}</div>}
                       </div>
                     )
                   })}
