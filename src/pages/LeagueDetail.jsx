@@ -6,15 +6,6 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import styles from './LeagueDetail.module.css'
 
-const JCB_URL = import.meta.env.VITE_JCB_URL
-const JCB_KEY = import.meta.env.VITE_JCB_KEY
-
-async function safeJson(res) {
-  const ct = res.headers.get('content-type') ?? ''
-  if (!ct.includes('application/json')) throw new Error(`Unexpected response (${res.status})`)
-  return res.json()
-}
-
 export default function LeagueDetail() {
   const { id } = useParams()
   const { user, profile } = useAuth()
@@ -70,21 +61,17 @@ export default function LeagueDetail() {
 
     try {
       const ref = `LEAGUE-${id.slice(0, 8)}-${user.id.slice(0, 8)}-${Date.now()}`
-      const chargeRes = await fetch(`${JCB_URL}/api/v1/cards/charge`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${JCB_KEY}` },
-        body: JSON.stringify({
-          card_number: profile.jcb_card_number,
+      const { data: chargeData, error: invokeErr } = await supabase.functions.invoke('charge-card', {
+        body: {
           amount: Number(league.entry_fee),
-          transaction_type: 'charge',
           description: `Jollar Picks — ${league.name} league entry`,
           reference: ref,
           metadata: { league_id: id, user_id: user.id },
-        }),
+        },
       })
-      const chargeData = await safeJson(chargeRes)
-      if (!chargeData?.ok) {
-        setJoinMsg({ type: 'error', text: chargeData?.error?.message ?? chargeData?.message ?? 'Card charge failed.' })
+
+      if (invokeErr || !chargeData?.ok) {
+        setJoinMsg({ type: 'error', text: chargeData?.error?.message ?? invokeErr?.message ?? 'Card charge failed.' })
         setJoining(false)
         return
       }
@@ -93,7 +80,7 @@ export default function LeagueDetail() {
         league_id: id,
         user_id: user.id,
         predictions,
-        jcb_transaction_ref: chargeData.data?.reference ?? ref,
+        jcb_transaction_ref: chargeData.data?.reference ?? chargeData?.reference ?? ref,
       })
 
       if (dbErr) {

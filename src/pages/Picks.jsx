@@ -6,15 +6,6 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import styles from './Picks.module.css'
 
-const JCB_URL = import.meta.env.VITE_JCB_URL
-const JCB_KEY = import.meta.env.VITE_JCB_KEY
-
-async function safeJson(res) {
-  const ct = res.headers.get('content-type') ?? ''
-  if (!ct.includes('application/json')) throw new Error(`Unexpected response (${res.status})`)
-  return res.json()
-}
-
 const SPORTS = ['All', 'NBA', 'NFL', 'MLB', 'NHL', 'Soccer', 'NCAAF', 'NCAAB', 'Bundesliga', 'EPL', 'MLS', 'Other']
 
 export default function Picks() {
@@ -61,35 +52,28 @@ export default function Picks() {
     setBetMsg(null)
 
     try {
-      // 1. Charge card via JCB directly
       const ref = `BET-${betPick.id.slice(0, 8)}-${user.id.slice(0, 8)}-${Date.now()}`
-      const chargeRes = await fetch(`${JCB_URL}/api/v1/cards/charge`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${JCB_KEY}` },
-        body: JSON.stringify({
-          card_number: profile.jcb_card_number,
+      const { data: chargeData, error: invokeErr } = await supabase.functions.invoke('charge-card', {
+        body: {
           amount,
-          transaction_type: 'charge',
           description: `Jollar Picks — ${betPick.matchup}`,
           reference: ref,
           metadata: { pick_id: betPick.id, user_id: user.id, platform: 'Jollar Picks' },
-        }),
+        },
       })
-      const chargeData = await safeJson(chargeRes)
 
-      if (!chargeData?.ok) {
-        setBetMsg({ type: 'error', text: chargeData?.error?.message ?? chargeData?.message ?? 'Charge failed.' })
+      if (invokeErr || !chargeData?.ok) {
+        setBetMsg({ type: 'error', text: chargeData?.error?.message ?? invokeErr?.message ?? 'Charge failed.' })
         setBetting(false)
         return
       }
 
-      // 2. Record bet in Supabase
       const { error: dbErr } = await supabase.from('user_bets').insert({
         user_id: user.id,
         pick_id: betPick.id,
         amount,
         prediction: betTeam,
-        jcb_transaction_ref: chargeData.data?.reference ?? ref,
+        jcb_transaction_ref: chargeData.data?.reference ?? chargeData?.reference ?? ref,
       })
 
       if (dbErr) {

@@ -6,12 +6,6 @@ import Nav from '../components/Nav'
 import Footer from '../components/Footer'
 import styles from './Dashboard.module.css'
 
-async function safeJson(res) {
-  const ct = res.headers.get('content-type') ?? ''
-  if (!ct.includes('application/json')) throw new Error(`Unexpected response (${res.status})`)
-  return res.json()
-}
-
 export default function Dashboard() {
   const { user, profile, account, loading, refreshProfile } = useAuth()
   const [bets, setBets] = useState([])
@@ -52,35 +46,17 @@ export default function Dashboard() {
     setCardInfo(null)
     setCardValidating(true)
     try {
-      const validateRes = await fetch(`${import.meta.env.VITE_JCB_URL}/api/v1/cards/validate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${import.meta.env.VITE_JCB_KEY}` },
-        body: JSON.stringify({ card_number: cardInput }),
+      const { data, error } = await supabase.functions.invoke('validate-card', {
+        body: { card_number: cardInput },
       })
-      const validateData = await safeJson(validateRes)
-      if (!validateData?.ok || !validateData.data?.valid) {
-        setCardError(validateData?.data?.reason ?? validateData?.message ?? 'Card not found or invalid.')
+      if (error || !data?.ok) {
+        setCardError(data?.error ?? error?.message ?? 'Card not found or invalid.')
         setCardValidating(false)
         return
       }
-
-      // Card is valid — set info immediately so save button enables
-      const info = { ...validateData.data, card_number: cardInput }
-      setCardInfo(info)
-
-      // Enrich with account details if account_number is present
-      const accountNumber = validateData.data.account_number
-      if (accountNumber) {
-        try {
-          const accRes = await fetch(`${import.meta.env.VITE_JCB_URL}/api/v1/accounts/${accountNumber}`, {
-            headers: { 'Authorization': `Bearer ${import.meta.env.VITE_JCB_KEY}` },
-          })
-          const accData = await safeJson(accRes)
-          if (accData?.ok) setCardInfo({ ...info, ...accData.data })
-        } catch {}
-      }
+      setCardInfo({ ...data.account, card_number: cardInput })
     } catch (err) {
-      setCardError(err.message ?? 'Failed to reach JCB API.')
+      setCardError(err.message ?? 'Failed to validate card.')
     }
     setCardValidating(false)
   }
@@ -210,9 +186,9 @@ export default function Dashboard() {
               {cardInfo && (
                 <p className={styles.cardSuccess}>
                   ✓ Card verified
-                  {cardInfo.owner_name ? ` — ${cardInfo.owner_name}` : ''}
-                  {cardInfo.account_number ? ` (${cardInfo.account_number})` : ''}
-                  {cardInfo.balance != null ? ` · Ɉ${Math.round(Number(cardInfo.balance))}` : ''}
+                  {cardInfo?.owner_name ? ` — ${cardInfo.owner_name}` : ''}
+                  {cardInfo?.account_number ? ` (${cardInfo.account_number})` : ''}
+                  {cardInfo?.balance != null ? ` · Ɉ${Math.round(Number(cardInfo.balance))}` : ''}
                 </p>
               )}
               {cardError && <p className={styles.cardErr}>{cardError}</p>}
