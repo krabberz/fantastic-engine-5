@@ -54,9 +54,16 @@ export default function LeagueDetail() {
 
   async function joinLeague(e) {
     e.preventDefault()
-    if (!user || !profile?.jcb_card_number) return
-    const allPredicted = picks.every(p => predictions[p.id])
-    if (!allPredicted) { setJoinMsg({ type: 'error', text: 'Make a prediction for every pick first.' }); return }
+    if (!user) return
+    if (!profile?.jcb_card_number) {
+      setJoinMsg({ type: 'error', text: 'No payment method linked. Add a card in Dashboard first.' })
+      return
+    }
+    const allPredicted = picks.length > 0 && picks.every(p => predictions[p.id])
+    if (!allPredicted) {
+      setJoinMsg({ type: 'error', text: 'Make a prediction for every pick before joining.' })
+      return
+    }
 
     setJoining(true)
     setJoinMsg(null)
@@ -77,7 +84,7 @@ export default function LeagueDetail() {
       })
       const chargeData = await safeJson(chargeRes)
       if (!chargeData?.ok) {
-        setJoinMsg({ type: 'error', text: chargeData?.message ?? 'Card charge failed.' })
+        setJoinMsg({ type: 'error', text: chargeData?.error?.message ?? chargeData?.message ?? 'Card charge failed.' })
         setJoining(false)
         return
       }
@@ -90,10 +97,9 @@ export default function LeagueDetail() {
       })
 
       if (dbErr) {
-        setJoinMsg({ type: 'error', text: `Charged but entry failed — ref: ${chargeData.data?.reference ?? ref}` })
+        setJoinMsg({ type: 'error', text: `Charged but entry failed: ${dbErr.message} — ref: ${chargeData.data?.reference ?? ref}` })
       } else {
         setJoinMsg({ type: 'success', text: `Joined! Ɉ${Math.round(Number(league.entry_fee))} charged.` })
-        // Reload entries
         const { data: le } = await supabase
           .from('league_entries')
           .select('*, profiles(display_name, full_name)')
@@ -234,7 +240,10 @@ export default function LeagueDetail() {
                           <span>Card: •••• {profile.jcb_card_number.slice(-4)}</span>
                           <span>Entry: <strong className="gold">Ɉ{Math.round(Number(league.entry_fee))}</strong></span>
                         </div>
-                        {joinMsg?.type === 'error' && <p className={styles.joinError}>{joinMsg.text}</p>}
+                        {joinMsg && <p className={joinMsg.type === 'error' ? styles.joinError : styles.joinSuccess}>{joinMsg.text}</p>}
+                        {picks.length > 0 && !picks.every(p => predictions[p.id]) && (
+                          <p className={styles.joinHint}>Pick a winner for every game above to continue.</p>
+                        )}
                         <button
                           type="submit"
                           className="btn-primary"
