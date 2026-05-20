@@ -526,33 +526,46 @@ export default function Admin() {
       )}
 
       {/* Settle result modal */}
-      {resultModal && (
-        <div className={styles.overlay} onClick={e => e.target === e.currentTarget && !settling && setResultModal(null)}>
-          <div className={styles.modal}>
-            <h2 className={styles.modalTitle}>Set Result</h2>
-            <p className={styles.modalSub}>{resultModal.matchup} — {resultModal.teams}</p>
-            {settleMsg ? (
-              <>
-                <p className={styles.settleMsg}>{settleMsg}</p>
-                <button className="btn-primary" style={{ width: '100%', marginTop: 16 }} onClick={() => setResultModal(null)}>Close</button>
-              </>
-            ) : (
-              <div className={styles.resultBtns}>
-                <button className={`${styles.resultBtn} ${styles.winBtn}`} disabled={settling} onClick={() => settleResult('win')}>
-                  {settling ? '...' : 'WIN — Pay out 2×'}
-                </button>
-                <button className={`${styles.resultBtn} ${styles.lossBtn}`} disabled={settling} onClick={() => settleResult('loss')}>
-                  {settling ? '...' : 'LOSS'}
-                </button>
-                <button className={`${styles.resultBtn} ${styles.pushBtn}`} disabled={settling} onClick={() => settleResult('push')}>
-                  {settling ? '...' : 'PUSH'}
-                </button>
-                <button className={styles.cancelBtn} disabled={settling} onClick={() => setResultModal(null)}>Cancel</button>
-              </div>
-            )}
+      {resultModal && (() => {
+        const [rt1, rt2] = (resultModal.teams || '').split(/\s+vs\.?\s+/i).map(t => t.trim())
+        const t1 = resultModal.team1 || rt1 || 'Team 1'
+        const t2 = resultModal.team2 || rt2 || 'Team 2'
+        const TIE_SPORTS = ['Soccer', 'EPL', 'MLS', 'Bundesliga', 'NCAAF']
+        const hasDraw = TIE_SPORTS.includes(resultModal.sport)
+        return (
+          <div className={styles.overlay} onClick={e => e.target === e.currentTarget && !settling && setResultModal(null)}>
+            <div className={styles.modal}>
+              <h2 className={styles.modalTitle}>Set Result</h2>
+              <p className={styles.modalSub}>{resultModal.sport} · {resultModal.teams}</p>
+              {settleMsg ? (
+                <>
+                  <p className={styles.settleMsg}>{settleMsg}</p>
+                  <button className="btn-primary" style={{ width: '100%', marginTop: 16 }} onClick={() => setResultModal(null)}>Close</button>
+                </>
+              ) : (
+                <div className={styles.resultBtns}>
+                  <button className={`${styles.resultBtn} ${styles.winBtn}`} disabled={settling} onClick={() => settleResult('win')}>
+                    {settling ? '...' : `${t1} Wins — Pay out 2×`}
+                  </button>
+                  <button className={`${styles.resultBtn} ${styles.lossBtn}`} disabled={settling} onClick={() => settleResult('loss')}>
+                    {settling ? '...' : `${t2} Wins`}
+                  </button>
+                  {hasDraw ? (
+                    <button className={`${styles.resultBtn} ${styles.pushBtn}`} disabled={settling} onClick={() => settleResult('push')}>
+                      {settling ? '...' : 'Draw'}
+                    </button>
+                  ) : (
+                    <button className={`${styles.resultBtn} ${styles.pushBtn}`} disabled={settling} onClick={() => settleResult('push')}>
+                      {settling ? '...' : 'Push / No Contest'}
+                    </button>
+                  )}
+                  <button className={styles.cancelBtn} disabled={settling} onClick={() => setResultModal(null)}>Cancel</button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       <Footer />
     </>

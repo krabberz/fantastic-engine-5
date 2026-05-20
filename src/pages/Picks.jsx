@@ -24,6 +24,7 @@ export default function Picks() {
   const [loading, setLoading] = useState(true)
 
   const [betPick, setBetPick] = useState(null)
+  const [betTeam, setBetTeam] = useState(null)   // 'team1' | 'team2' | 'tie'
   const [betAmount, setBetAmount] = useState('')
   const [betting, setBetting] = useState(false)
   const [betMsg, setBetMsg] = useState(null)
@@ -46,6 +47,7 @@ export default function Picks() {
 
   function openBet(pick) {
     setBetPick(pick)
+    setBetTeam(null)
     setBetAmount('')
     setBetMsg(null)
   }
@@ -86,6 +88,7 @@ export default function Picks() {
         user_id: user.id,
         pick_id: betPick.id,
         amount,
+        prediction: betTeam,
         jcb_transaction_ref: chargeData.data?.reference ?? ref,
       })
 
@@ -151,63 +154,94 @@ export default function Picks() {
       </section>
 
       {/* Bet modal */}
-      {betPick && (
-        <div className={styles.overlay} onClick={e => e.target === e.currentTarget && !betting && setBetPick(null)}>
-          <div className={styles.modal}>
-            <div className={styles.modalSport}>{betPick.sport}</div>
-            <h2 className={styles.modalTitle}>{betPick.matchup}</h2>
-            <p className={styles.modalSub}>{betPick.teams}</p>
+      {betPick && (() => {
+        const [bt1, bt2] = (betPick.teams || '').split(/\s+vs\.?\s+/i).map(t => t.trim())
+        const t1 = betPick.team1 || bt1 || 'Team 1'
+        const t2 = betPick.team2 || bt2 || 'Team 2'
+        const TIE_SPORTS = ['Soccer', 'EPL', 'MLS', 'Bundesliga', 'NCAAF']
+        const hasTie = TIE_SPORTS.includes(betPick.sport)
+        const teamOptions = [
+          { value: 'team1', label: t1, odds: betPick.team1_odds },
+          { value: 'team2', label: t2, odds: betPick.team2_odds },
+          ...(hasTie ? [{ value: 'tie', label: 'Draw', odds: null }] : []),
+        ]
+        return (
+          <div className={styles.overlay} onClick={e => e.target === e.currentTarget && !betting && setBetPick(null)}>
+            <div className={styles.modal}>
+              <div className={styles.modalSport}>{betPick.sport}</div>
+              <h2 className={styles.modalTitle}>{t1} vs {t2}</h2>
+              {betPick.spread && <p className={styles.modalSub}>O/U {betPick.spread}</p>}
 
-            {!profile?.jcb_card_number ? (
-              <>
-                <p className={styles.noCard}>No payment method linked to your account.</p>
-                <Link to="/dashboard" className="btn-primary" style={{ display: 'block', textAlign: 'center', marginTop: 16 }}>
-                  Add Card in Dashboard
-                </Link>
-                <button className={styles.cancelBtn} style={{ marginTop: 12 }} onClick={() => setBetPick(null)}>Cancel</button>
-              </>
-            ) : betMsg?.type === 'success' ? (
-              <>
-                <p className={styles.betSuccess}>{betMsg.text}</p>
-                <button className="btn-primary" style={{ width: '100%', marginTop: 16 }} onClick={() => setBetPick(null)}>Done</button>
-              </>
-            ) : (
-              <form onSubmit={placeBet} className={styles.betForm}>
-                <div className={styles.cardHint}>
-                  Card: •••• {profile.jcb_card_number.slice(-4)}
-                </div>
-                <div className={styles.field}>
-                  <label className={styles.label}>Amount (Ɉ)</label>
-                  <input
-                    type="number"
-                    min="4"
-                    step="1"
-                    placeholder="4"
-                    value={betAmount}
-                    onChange={e => setBetAmount(e.target.value)}
-                    className={styles.input}
-                    autoFocus
-                    required
-                  />
-                </div>
-                {parseFloat(betAmount) >= 4 && (
-                  <div className={styles.payoutRow}>
-                    <span className={styles.payoutLabel}>Potential Win</span>
-                    <span className={styles.payoutVal}>Ɉ{Math.round(parseFloat(betAmount)) * 2}</span>
+              {!profile?.jcb_card_number ? (
+                <>
+                  <p className={styles.noCard}>No payment method linked to your account.</p>
+                  <Link to="/dashboard" className="btn-primary" style={{ display: 'block', textAlign: 'center', marginTop: 16 }}>
+                    Add Card in Dashboard
+                  </Link>
+                  <button className={styles.cancelBtn} style={{ marginTop: 12 }} onClick={() => setBetPick(null)}>Cancel</button>
+                </>
+              ) : betMsg?.type === 'success' ? (
+                <>
+                  <p className={styles.betSuccess}>{betMsg.text}</p>
+                  <button className="btn-primary" style={{ width: '100%', marginTop: 16 }} onClick={() => setBetPick(null)}>Done</button>
+                </>
+              ) : (
+                <form onSubmit={placeBet} className={styles.betForm}>
+                  <div className={styles.cardHint}>Card: •••• {profile.jcb_card_number.slice(-4)}</div>
+
+                  <div className={styles.field}>
+                    <label className={styles.label}>Pick a winner</label>
+                    <div className={styles.teamBtns}>
+                      {teamOptions.map(({ value, label, odds }) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setBetTeam(value)}
+                          className={`${styles.teamBtn} ${betTeam === value ? styles.teamBtnActive : ''}`}
+                        >
+                          <span>{label}</span>
+                          {odds && <span className={styles.oddsChip}>{odds}</span>}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                )}
-                {betMsg?.type === 'error' && <p className={styles.betError}>{betMsg.text}</p>}
-                <div className={styles.betActions}>
-                  <button type="button" className={styles.cancelBtn} disabled={betting} onClick={() => setBetPick(null)}>Cancel</button>
-                  <button type="submit" className="btn-primary" disabled={betting || !betAmount}>
-                    {betting ? 'Placing...' : 'Place Bet'}
-                  </button>
-                </div>
-              </form>
-            )}
+
+                  {betTeam && (
+                    <div className={styles.field}>
+                      <label className={styles.label}>Amount (Ɉ)</label>
+                      <input
+                        type="number"
+                        min="4"
+                        step="1"
+                        placeholder="4"
+                        value={betAmount}
+                        onChange={e => setBetAmount(e.target.value)}
+                        className={styles.input}
+                        autoFocus
+                        required
+                      />
+                    </div>
+                  )}
+
+                  {parseFloat(betAmount) >= 4 && (
+                    <div className={styles.payoutRow}>
+                      <span className={styles.payoutLabel}>Potential Win</span>
+                      <span className={styles.payoutVal}>Ɉ{Math.round(parseFloat(betAmount)) * 2}</span>
+                    </div>
+                  )}
+                  {betMsg?.type === 'error' && <p className={styles.betError}>{betMsg.text}</p>}
+                  <div className={styles.betActions}>
+                    <button type="button" className={styles.cancelBtn} disabled={betting} onClick={() => setBetPick(null)}>Cancel</button>
+                    <button type="submit" className="btn-primary" disabled={betting || !betTeam || !betAmount}>
+                      {betting ? 'Placing...' : 'Place Bet'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       <Footer />
     </>
@@ -216,24 +250,40 @@ export default function Picks() {
 
 function PickCard({ pick, user, completed, onBet }) {
   const gameTime = new Date(pick.game_time)
+  const isLocked = !completed && new Date() >= gameTime
   const timeStr = gameTime.toLocaleString('en-US', {
     weekday: 'short', month: 'short', day: 'numeric',
     hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
   })
+  const [t1, t2] = (pick.teams || '').split(/\s+vs\.?\s+/i).map(t => t.trim())
+  const team1 = pick.team1 || t1
+  const team2 = pick.team2 || t2
+
+  const resultLabel = pick.result === 'win' ? `${team1} Won`
+    : pick.result === 'loss' ? `${team2} Won`
+    : pick.result === 'push' ? 'Push / Draw'
+    : null
 
   return (
     <div className={`${styles.pickCard} ${completed ? styles.pickCardCompleted : ''}`}>
       <div className={styles.pickTop}>
         <div className={styles.pickSport}>{pick.sport}</div>
         {pick.is_hot && <div className={styles.hotTag}>🔥 Hot Pick</div>}
-        {pick.result && (
+        {isLocked && <div className={styles.inPlayTag}>In Play</div>}
+        {resultLabel && (
           <div className={`${styles.resultTag} ${pick.result === 'win' ? styles.win : pick.result === 'loss' ? styles.loss : styles.push}`}>
-            {pick.result.toUpperCase()}
+            {resultLabel}
           </div>
         )}
       </div>
-      <div className={styles.pickMatchup}>{pick.matchup}</div>
-      <div className={styles.pickTeams}>{pick.teams}</div>
+      <div className={styles.pickMatchup}>{team1} vs {team2}</div>
+      {(pick.team1_odds || pick.team2_odds) && (
+        <div className={styles.pickOddsRow}>
+          {pick.team1_odds && <span className={styles.pickOdds}>{team1} <strong>{pick.team1_odds}</strong></span>}
+          {pick.team2_odds && <span className={styles.pickOdds}>{team2} <strong>{pick.team2_odds}</strong></span>}
+        </div>
+      )}
+      {pick.spread && <div className={styles.pickSpread}>O/U {pick.spread}</div>}
       <div className={styles.pickTime}>{timeStr}</div>
       <div className={styles.pickBottom}>
         <div>
@@ -243,9 +293,8 @@ function PickCard({ pick, user, completed, onBet }) {
             <div className={styles.confidenceFill} style={{ width: `${pick.confidence}%` }} />
           </div>
         </div>
-        {!completed && (
+        {!completed && !isLocked && (
           <div className={styles.pickBottomRight}>
-            <div className={styles.oddsTag}>{pick.odds ?? 'N/A'}</div>
             {user && (
               <button className={styles.betBtn} onClick={onBet}>Place Bet</button>
             )}

@@ -203,6 +203,80 @@
 }
 .betBtn:hover { opacity: 0.85; }
 
+.inPlayTag {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #f0a040;
+  background: rgba(240,160,64,0.12);
+  border: 1px solid rgba(240,160,64,0.3);
+  padding: 2px 8px;
+}
+
+.pickOddsRow {
+  display: flex;
+  gap: 16px;
+  margin: 4px 0;
+}
+
+.pickOdds {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  color: rgba(245,240,232,0.55);
+  letter-spacing: 0.5px;
+}
+
+.pickSpread {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  color: rgba(245,240,232,0.4);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin: 2px 0;
+}
+
+/* Team selection in bet modal */
+.teamBtns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.teamBtn {
+  flex: 1;
+  min-width: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 12px;
+  background: var(--black-3);
+  border: 1px solid rgba(245,240,232,0.1);
+  color: var(--white);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.teamBtn:hover { border-color: rgba(201,168,76,0.4); color: var(--gold-light); }
+.teamBtnActive {
+  background: rgba(201,168,76,0.15);
+  border-color: var(--gold);
+  color: var(--gold-light);
+}
+
+.oddsChip {
+  font-size: 11px;
+  color: var(--gold);
+  opacity: 0.8;
+  font-family: 'Barlow Condensed', sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 /* Bet modal */
 .overlay {
   position: fixed;
